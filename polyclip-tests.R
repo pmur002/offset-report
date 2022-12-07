@@ -1,0 +1,56 @@
+
+      A <- list(list(x=c(-3,3,3,-3),y=c(-3,-3,3,3)))
+       B <- list(list(x=c(-1,1,1,-1),y=c(-1,-1,1,1)))
+       C <- polyminkowski(A, B)
+
+       opa <- par(mfrow=c(1,3))
+       rr <- c(-4, 4)
+       plot(rr, rr, type="n", axes=FALSE, xlab="", ylab="", main="A")
+       polygon(A[[1]], col="blue")
+       plot(rr,rr, type="n", axes=FALSE, xlab="", ylab="", main="B")
+       polygon(B[[1]], border="red", lwd=4)
+       plot(rr,rr, type="n", axes=FALSE, xlab="", ylab="", main="A+B")
+       polygon(C[[1]], col=NA)
+       polygon(C[[2]], col=NA)
+       par(opa)
+
+       D <- polyminkowski(B, A, closed=FALSE)
+
+       opa <- par(mfrow=c(1,3))
+       rr <- c(-4, 4)
+       plot(rr, rr, type="n", axes=FALSE, xlab="", ylab="", main="A")
+       polygon(A[[1]], col="blue")
+       plot(rr,rr, type="n", axes=FALSE, xlab="", ylab="", main="B")
+       polygon(B[[1]], border="red", lwd=4)
+       plot(rr,rr, type="n", axes=FALSE, xlab="", ylab="", main="A+B")
+       polygon(D[[1]], col="green")
+       polygon(D[[2]], col="white")
+       par(opa)
+
+       E <- polyminkowski(B, A)
+
+       opa <- par(mfrow=c(1,3))
+       rr <- c(-4, 4)
+       plot(rr, rr, type="n", axes=FALSE, xlab="", ylab="", main="A")
+       polygon(A[[1]], col="blue")
+       plot(rr,rr, type="n", axes=FALSE, xlab="", ylab="", main="B")
+       polygon(B[[1]], border="red", lwd=4)
+       plot(rr,rr, type="n", axes=FALSE, xlab="", ylab="", main="A+B")
+       polygon(E[[1]])
+       polygon(E[[2]])
+       par(opa)
+
+       F <- polyminkowski(A, B, closed=FALSE)
+
+       opa <- par(mfrow=c(1,3))
+       rr <- c(-4, 4)
+       plot(rr, rr, type="n", axes=FALSE, xlab="", ylab="", main="A")
+       polygon(A[[1]], col="blue")
+       plot(rr,rr, type="n", axes=FALSE, xlab="", ylab="", main="B")
+       polygon(B[[1]], border="red", lwd=4)
+       plot(rr,rr, type="n", axes=FALSE, xlab="", ylab="", main="A+B")
+       polygon(F[[1]], col=NA)
+       polygon(F[[2]], col=NA)
+       par(opa)
+
+

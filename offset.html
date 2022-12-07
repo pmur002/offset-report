@@ -1,0 +1,1100 @@
+<html>
+  <head>
+<style type="text/css">
+.inline {
+  background-color: #f7f7f7;
+  border:solid 1px #B0B0B0;
+}
+.error {
+	font-weight: bold;
+	color: #FF0000;
+}
+.warning {
+	font-weight: bold;
+}
+.message {
+	font-style: italic;
+}
+.source, .output, .warning, .error, .message {
+	padding: 0 1em;
+  border:solid 1px #F7F7F7;
+}
+.source {
+  background-color: #f5f5f5;
+}
+.left {
+  text-align: left;
+}
+.right {
+  text-align: right;
+}
+.center {
+  text-align: center;
+}
+.hl.num {
+  color: #AF0F91;
+}
+.hl.str {
+  color: #317ECC;
+}
+.hl.com {
+  color: #AD95AF;
+  font-style: italic;
+}
+.hl.opt {
+  color: #000000;
+}
+.hl.std {
+  color: #585858;
+}
+.hl.kwa {
+  color: #295F94;
+  font-weight: bold;
+}
+.hl.kwb {
+  color: #B05A65;
+}
+.hl.kwc {
+  color: #55aa55;
+}
+.hl.kwd {
+  color: #BC5A65;
+  font-weight: bold;
+}
+</style>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <style type="text/css">
+    @media print {
+      body { }
+      p.img { text-align: center; page-break-inside: avoid }
+      img.CC { display: inline }
+    }
+    @media screen {
+      body { max-width: 800px; margin: auto }
+      p.img { text-align: center }
+      img.CC { display: inline }
+    }
+    p.date {
+      font-size: smaller;
+      margin: 0;
+    }
+    p.versionHistory {
+      color: gray
+    }
+    p.versionHistory a {
+      color: gray
+    }
+    p.ref {
+      text-indent: -2em;
+      padding-left: 2em;
+    }
+    p.fig {
+      text-align: left;
+    }
+    p.fig img, img.plot {
+      box-shadow: 10px 10px 20px;
+      margin-top: 10px;
+      margin-bottom: 20px;      
+    }
+  </style>
+    <script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']]
+  }
+};
+  </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+  </script>
+    <title>Offsetting Lines and Polygons in 'grid'</title>
+  </head>
+  <body>
+    <h1>Offsetting Lines and Polygons in 'grid'</h1>
+    <p>
+      <span style="font-style: italic">by Jack Wong and Paul Murrell</span>
+      <a href="http://orcid.org">
+        <img alt="" src="https://www.stat.auckland.ac.nz/~paul/ORCID/ORCiD.png" style="width: 16px; height: 16px; vertical-align: middle">
+      </a>
+      <span style="font-family: mono; font-size: small">
+        <a href="http://orcid.org/0000-0002-3224-8858">http://orcid.org/0000-0002-3224-8858</a>
+      </span>
+    </p>
+    <p class="date">
+    Version 1:  
+Tuesday 06 December 2022
+  </p>
+
+
+    <hr>
+    <p><a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img class="CC" alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png"></a><br><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">This document</span>
+    by <span xmlns:cc="http://creativecommons.org/ns#" property="cc:attributionName">Jack Wong and Paul
+    Murrell</span> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative
+    Commons Attribution 4.0 International License</a>.
+  </p>
+    <hr>
+    <p>
+    This document describes new functions in the 'gridGeometry' package
+    for R that generate offset regions and Minkowski Sums
+    for lines and polygons.
+  </p>
+    <div>
+      <h2>Table of Contents:</h2>
+      <ul style="list-style: none">
+        <li>
+          <a href="#intro">1. Introduction</a>
+        </li>
+        <li>
+          <a href="#offset">2. Drawing offset regions</a>
+        </li>
+        <li>
+          <a href="#complex">3. Complex offset regions</a>
+        </li>
+        <li>
+          <a href="#lowlevel">4. Low-level offset regions</a>
+        </li>
+        <li>
+          <a href="#applications">5. Applications</a>
+        </li>
+        <li>
+          <a href="#minkowski">6. Minkowski Sums</a>
+        </li>
+        <li>
+          <a href="#summary">7. Summary</a>
+        </li>
+        <li>
+          <a href="#requirements">8. Technical requirements</a>
+        </li>
+        <li>
+          <a href="#Resources">9. Resources</a>
+        </li>
+        <li>
+          <a href="#references">10. References</a>
+        </li>
+      </ul>
+    </div>
+    <h2>
+      <a name="intro">1. Introduction</a>
+    </h2>
+    <p>
+    The 'gridGeometry' package 
+    (<a href="#murrell-geometry-engine-2019">Murrell, 2019</a>;
+     <a href="#murrell-coords-2022">Murrell, 2022a</a>)
+     provides a 'grid' interface to 
+    the <code>polyclip()</code> function from the 'polyclip' package 
+    (<a href="#pkg:polyclip">Johnson and Baddeley, 2019</a>).
+    This means that we can generate and draw a complex shape in 'grid'
+    by combining simple 'grid' shapes.
+    For example, the following code 
+    defines a collection of simple circles:
+    a large circle and several smaller circles
+    that are arranged around the boundary of the large circle.
+  </p>
+<div class="chunk" id="unnamed-chunk-3"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">library</span><span class="hl std">(grid)</span>
+</pre></div>
+</div></div>
+<div class="chunk" id="unnamed-chunk-4"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">t</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">seq</span><span class="hl std">(</span><span class="hl num">0</span><span class="hl std">,</span> <span class="hl num">2</span><span class="hl opt">*</span><span class="hl std">pi,</span> <span class="hl kwc">length.out</span><span class="hl std">=</span><span class="hl num">13</span><span class="hl std">)[</span><span class="hl opt">-</span><span class="hl num">1</span><span class="hl std">]</span>
+<span class="hl std">x</span> <span class="hl kwb">&lt;-</span> <span class="hl num">.5</span> <span class="hl opt">+</span> <span class="hl num">.3</span><span class="hl opt">*</span><span class="hl kwd">cos</span><span class="hl std">(t)</span>
+<span class="hl std">y</span> <span class="hl kwb">&lt;-</span> <span class="hl num">.5</span> <span class="hl opt">+</span> <span class="hl num">.3</span><span class="hl opt">*</span><span class="hl kwd">sin</span><span class="hl std">(t)</span>
+</pre></div>
+</div></div>
+<div class="chunk" id="unnamed-chunk-5"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">bigC</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">circleGrob</span><span class="hl std">(</span><span class="hl kwc">r</span><span class="hl std">=</span><span class="hl num">.3</span><span class="hl std">,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl num">NA</span><span class="hl std">))</span>
+<span class="hl std">littleC</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">circleGrob</span><span class="hl std">(x, y,</span> <span class="hl kwc">r</span><span class="hl std">=</span><span class="hl num">.05</span><span class="hl std">,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl num">NA</span><span class="hl std">))</span>
+</pre></div>
+</div></div>
+<div class="chunk" id="unnamed-chunk-6"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">grid.draw</span><span class="hl std">(bigC)</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(littleC)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-6-1.png" title="plot of chunk unnamed-chunk-6" alt="plot of chunk unnamed-chunk-6" class="plot" /></div></div>
+    <p>
+    The next code generates a more complex "gear" shape by 
+    subtracting the smaller circles from the large circle.
+  </p>
+<div class="chunk" id="unnamed-chunk-7"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">library</span><span class="hl std">(gridGeometry)</span>
+</pre></div>
+</div></div>
+<div class="chunk" id="unnamed-chunk-8"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">grid.polyclip</span><span class="hl std">(bigC, littleC,</span> <span class="hl str">&quot;minus&quot;</span><span class="hl std">,</span>
+              <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-8-1.png" title="plot of chunk unnamed-chunk-8" alt="plot of chunk unnamed-chunk-8" class="plot" /></div></div>
+    <p>
+    This report describes an extension of the 'gridGeometry' package
+    to provide interfaces to two other functions from the 'polyclip'
+    package:  <code>polyoffset()</code> and <code>polylineoffset</code>.
+  </p>
+    <h2>
+      <a name="offset">2. Drawing offset regions</a>
+    </h2>
+    <p>
+    Two main functions have been added to 'gridGeometry'
+    for drawing offset regions: <code>grid.polyoffset()</code> and 
+    <code>grid.polylineoffset()</code>.
+  </p>
+    <p>
+    The <code>grid.polyoffset()</code> function takes a closed shape,
+    such as a rectangle or circle, and generates an offset region
+    based on a fixed offset given by
+    <code>delta</code>.  For example, the following code
+    defines a rectangle and then draws an offset region based on
+    that rectangle with an offset of 5mm.  The original rectangle
+    is shown as a dotted outline.
+  </p>
+<div class="chunk" id="unnamed-chunk-9"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">r</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">rectGrob</span><span class="hl std">(</span><span class="hl kwc">width</span><span class="hl std">=</span><span class="hl num">.5</span><span class="hl std">,</span> <span class="hl kwc">height</span><span class="hl std">=</span><span class="hl num">.5</span><span class="hl std">,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">lty</span><span class="hl std">=</span><span class="hl str">&quot;dotted&quot;</span><span class="hl std">,</span> <span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl num">NA</span><span class="hl std">))</span>
+<span class="hl kwd">grid.polyoffset</span><span class="hl std">(r,</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">5</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(r)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-9-1.png" title="plot of chunk unnamed-chunk-9" alt="plot of chunk unnamed-chunk-9" class="plot" /></div></div>
+    <p>
+    The offset can also be negative, as shown in the following code.
+  </p>
+<div class="chunk" id="unnamed-chunk-10"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">grid.polyoffset</span><span class="hl std">(r,</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">5</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(r)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-10-1.png" title="plot of chunk unnamed-chunk-10" alt="plot of chunk unnamed-chunk-10" class="plot" /></div></div>
+    <p>
+    The <code>grid.polylineoffset</code> function takes an open
+    shape, such as a line or curve, and draws an offset region
+    based on a given <code>delta</code>.
+    For example, the following code draws an offset region
+    based on a series of straight line segments
+    (the original line segments are shown as a dotted line).
+  </p>
+<div class="chunk" id="unnamed-chunk-11"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">l</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">linesGrob</span><span class="hl std">(</span><span class="hl kwd">c</span><span class="hl std">(</span><span class="hl num">.25</span><span class="hl std">,</span> <span class="hl num">.25</span><span class="hl std">,</span> <span class="hl num">.75</span><span class="hl std">,</span> <span class="hl num">.75</span><span class="hl std">),</span> <span class="hl kwd">c</span><span class="hl std">(</span><span class="hl num">.25</span><span class="hl std">,</span> <span class="hl num">.75</span><span class="hl std">,</span> <span class="hl num">.75</span><span class="hl std">,</span> <span class="hl num">.25</span><span class="hl std">),</span>
+               <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">lty</span><span class="hl std">=</span><span class="hl str">&quot;dotted&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.polylineoffset</span><span class="hl std">(l,</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">5</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(l)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-11-1.png" title="plot of chunk unnamed-chunk-11" alt="plot of chunk unnamed-chunk-11" class="plot" /></div></div>
+    <p>
+    The new offset region functions in 'gridGeometry' can be combined
+    with the existing <code>grid.polyclip()</code> function
+    to produce an even wider variety of shapes.  For example, 
+    the following code generates a "square donut" by starting with
+    a rectangle, generating two offset regions (one with positive delta
+    and one with negative delta), and then subtracting the inner offset region
+    from the outer offset region.
+  </p>
+<div class="chunk" id="unnamed-chunk-12"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">grid.newpage</span><span class="hl std">()</span>
+<span class="hl std">outer</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">polyoffsetGrob</span><span class="hl std">(r,</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">5</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">))</span>
+<span class="hl std">inner</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">polyoffsetGrob</span><span class="hl std">(r,</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">5</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.polyclip</span><span class="hl std">(outer, inner,</span> <span class="hl str">&quot;minus&quot;</span><span class="hl std">,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(r)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-12-1.png" title="plot of chunk unnamed-chunk-12" alt="plot of chunk unnamed-chunk-12" class="plot" /></div></div>
+    <h3>End types and join types</h3>
+    <p>
+    In all of the examples so far, the offset regions have been created
+    with rounded corners.  The <code>jointype</code> argument
+    can be used to select alternative corner styles:
+  </p>
+    <ul>
+      <li>
+        <p><code>"square"</code> produces bevelled corners.
+      </p>
+<div class="chunk" id="unnamed-chunk-13"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">grid.polyoffset</span><span class="hl std">(r,</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">5</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span> <span class="hl kwc">jointype</span><span class="hl std">=</span><span class="hl str">&quot;square&quot;</span><span class="hl std">,</span>
+                <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(r)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-13-1.png" title="plot of chunk unnamed-chunk-13" alt="plot of chunk unnamed-chunk-13" class="plot" /></div></div>
+      </li>
+      <li>
+        <p><code>"miter"</code> (or <code>"mitre"</code>) produces pointy corners.
+      </p>
+<div class="chunk" id="unnamed-chunk-14"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">grid.polyoffset</span><span class="hl std">(r,</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">5</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span> <span class="hl kwc">jointype</span><span class="hl std">=</span><span class="hl str">&quot;miter&quot;</span><span class="hl std">,</span>
+                <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(r)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-14-1.png" title="plot of chunk unnamed-chunk-14" alt="plot of chunk unnamed-chunk-14" class="plot" /></div></div>
+      </li>
+    </ul>
+    <p>
+    With <code>grid.polylineoffset()</code> we can control the shape
+    of corners with <code>jointype</code> as above <em>and</em> we can control
+    the shape of the offset region at the ends of the line or curve
+    with the <code>endtype</code> argument.  This defaults to 
+    <code>"openround"</code> (rounded ends).
+  </p>
+    <ul>
+      <li>
+        <p><code>"opensquare"</code> produces square ends (at an offset from the
+        end of the line).
+      </p>
+<div class="chunk" id="unnamed-chunk-15"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">grid.polylineoffset</span><span class="hl std">(l,</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">5</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span> <span class="hl kwc">endtype</span><span class="hl std">=</span><span class="hl str">&quot;opensquare&quot;</span><span class="hl std">,</span>
+                    <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(l)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-15-1.png" title="plot of chunk unnamed-chunk-15" alt="plot of chunk unnamed-chunk-15" class="plot" /></div></div>
+      </li>
+      <li>
+        <p><code>"openbutt"</code> produces square ends (at the end of the line).
+      </p>
+<div class="chunk" id="unnamed-chunk-16"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">grid.polylineoffset</span><span class="hl std">(l,</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">5</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span> <span class="hl kwc">endtype</span><span class="hl std">=</span><span class="hl str">&quot;openbutt&quot;</span><span class="hl std">,</span>
+                    <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(l)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-16-1.png" title="plot of chunk unnamed-chunk-16" alt="plot of chunk unnamed-chunk-16" class="plot" /></div></div>
+      </li>
+    </ul>
+    <p>
+    There are also two unusual end types that join
+    the end of the line to the start of the line,
+    in which case there are no longer ends to worry about and only
+    the join type matters.
+  </p>
+    <ul>
+      <li>
+        <p><code>"closedpolygon"</code> converts the line to a polygon
+        and calculates an offset of the polygon.
+      </p>
+<div class="chunk" id="unnamed-chunk-17"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">grid.polylineoffset</span><span class="hl std">(l,</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">5</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span> <span class="hl kwc">endtype</span><span class="hl std">=</span><span class="hl str">&quot;closedpolygon&quot;</span><span class="hl std">,</span>
+                    <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(l)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-17-1.png" title="plot of chunk unnamed-chunk-17" alt="plot of chunk unnamed-chunk-17" class="plot" /></div></div>
+      </li>
+      <li>
+        <p><code>"closedline"</code> converts the line to a closed line
+        and calculates an offset of the line.
+      </p>
+<div class="chunk" id="unnamed-chunk-18"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">grid.polylineoffset</span><span class="hl std">(l,</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">5</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span> <span class="hl kwc">endtype</span><span class="hl std">=</span><span class="hl str">&quot;closedline&quot;</span><span class="hl std">,</span>
+                    <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(l)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-18-1.png" title="plot of chunk unnamed-chunk-18" alt="plot of chunk unnamed-chunk-18" class="plot" /></div></div>
+      </li>
+    </ul>
+    <h2>
+      <a name="complex">3. Complex offset regions</a>
+    </h2>
+    <p>
+    This section looks at some more complicated scenarios for
+    calculating offset regions and some lower-level functions
+    that have been added to 'gridGeometry'.
+  </p>
+    <h3>Offset regions for multiple shapes</h3>
+    <p>
+    The examples from the previous section have only considered 
+    the situation where we are generating an offset region based
+    on a single shape.  In this section we consider what happens
+    when we have more than shape, for example, in the following code
+    we create a 'grid' grob that draws two (overlapping) circles.
+  </p>
+<div class="chunk" id="unnamed-chunk-19"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">circles</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">circleGrob</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl opt">:</span><span class="hl num">2</span><span class="hl opt">/</span><span class="hl num">3</span><span class="hl std">,</span> <span class="hl kwc">r</span><span class="hl std">=</span><span class="hl num">.3</span><span class="hl std">,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl num">NA</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(circles)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-19-1.png" title="plot of chunk unnamed-chunk-19" alt="plot of chunk unnamed-chunk-19" class="plot" /></div></div>
+    <p>
+    The first important point is that 'gridGeometry' will "reduce"
+    a grob that draws multiple shapes before sending it to
+    'polyclip'.  This happens automatically, but the following
+    code explicitly performs the reduce to show what happens
+    by default.  In this case, we get a single shape that is the
+    union of the two circles (drawn as a dotted outline so that
+    we can add it to the offset region examples below).
+  </p>
+<div class="chunk" id="unnamed-chunk-20"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">circleUnion</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">reduceGrob</span><span class="hl std">(circles,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">lty</span><span class="hl std">=</span><span class="hl str">&quot;dotted&quot;</span><span class="hl std">,</span> <span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl num">NA</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(circleUnion)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-20-1.png" title="plot of chunk unnamed-chunk-20" alt="plot of chunk unnamed-chunk-20" class="plot" /></div></div>
+    <p>
+    When we calculate an offset region for the two circles
+    we get a single region (shown in grey below).  This makes sense because
+    we are actually calculating an offset of the union of 
+    the two circles (shown as a dotted outline).
+  </p>
+<div class="chunk" id="unnamed-chunk-21"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">grid.polyoffset</span><span class="hl std">(circles,</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">5</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(circleUnion)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-21-1.png" title="plot of chunk unnamed-chunk-21" alt="plot of chunk unnamed-chunk-21" class="plot" /></div></div>
+    <p>
+    If we use a negative offset, we still get a single region, again
+    because we are offsetting the union of the circles.
+  </p>
+<div class="chunk" id="unnamed-chunk-22"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">grid.polyoffset</span><span class="hl std">(circles,</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">5</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(circleUnion)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-22-1.png" title="plot of chunk unnamed-chunk-22" alt="plot of chunk unnamed-chunk-22" class="plot" /></div></div>
+    <p>
+    However, if we increase the (negative) offset, it is possible to
+    end up with
+    two regions as the result, even though we are offsetting a single region.
+  </p>
+<div class="chunk" id="unnamed-chunk-23"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">grid.polyoffset</span><span class="hl std">(circles,</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">10</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(circleUnion)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-23-1.png" title="plot of chunk unnamed-chunk-23" alt="plot of chunk unnamed-chunk-23" class="plot" /></div></div>
+    <p>
+    We can also control how the circles are reduced.
+    For example, the following code explicitly reduces the circles
+    using a "flatten" operator, which keeps the circles as two
+    separate circles.
+  </p>
+<div class="chunk" id="unnamed-chunk-24"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">circleFlatten</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">reduceGrob</span><span class="hl std">(circles,</span> <span class="hl kwc">op</span><span class="hl std">=</span><span class="hl str">&quot;flatten&quot;</span><span class="hl std">,</span>
+                            <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">lty</span><span class="hl std">=</span><span class="hl str">&quot;dotted&quot;</span><span class="hl std">,</span> <span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl num">NA</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(circleFlatten)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-24-1.png" title="plot of chunk unnamed-chunk-24" alt="plot of chunk unnamed-chunk-24" class="plot" /></div></div>
+    <p>
+    When we specify an explicit <code>reduce="flatten"</code> to 
+    <code>grid.polyoffset()</code>, we can end up sending
+    multiple shapes to 'polyclip'.
+  </p>
+    <p>
+    The following code generates an offset region based on two separate
+    circles.  The result is a single region, just 
+    the same as when we offset the union of the
+    circles, because the offset regions of the two circles overlap.
+  </p>
+<div class="chunk" id="unnamed-chunk-25"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">grid.polyoffset</span><span class="hl std">(circles,</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">5</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span> <span class="hl kwc">reduce</span><span class="hl std">=</span><span class="hl str">&quot;flatten&quot;</span><span class="hl std">,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(circleFlatten)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-25-1.png" title="plot of chunk unnamed-chunk-25" alt="plot of chunk unnamed-chunk-25" class="plot" /></div></div>
+    <p>
+    However, if we use a negative offset, the result is two separate regions
+    (because the offset regions of the two circles do not overlap).
+  </p>
+<div class="chunk" id="unnamed-chunk-26"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">grid.polyoffset</span><span class="hl std">(circles,</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">5</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span> <span class="hl kwc">reduce</span><span class="hl std">=</span><span class="hl str">&quot;flatten&quot;</span><span class="hl std">,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(circleFlatten)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-26-1.png" title="plot of chunk unnamed-chunk-26" alt="plot of chunk unnamed-chunk-26" class="plot" /></div></div>
+    <p>
+    In summary, it is possible to start with either a single shape or 
+    multiple shapes and end up with either a single shape or multiple
+    shapes, depending on how (or whether) we reduce the input shapes
+    and on whether the resulting offset regions (if there are more
+    than one) overlap each other.
+  </p>
+    <h2>
+      <a name="lowlevel">4. Low-level offset regions</a>
+    </h2>
+    <p>
+    In the previous sections, we have demonstrated functions
+    that allow us to provide 'grid' grobs as input and obtain 
+    grobs as output.  The 'gridGeometry' package also provides
+    a lower-level interface that just works with coordinates 
+    rather than grobs.
+  </p>
+    <p>
+    As an example of working at a lower level, 
+    consider the simple circle shape shown below.
+  </p>
+<div class="chunk" id="unnamed-chunk-27"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">c</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">circleGrob</span><span class="hl std">(</span><span class="hl kwc">r</span><span class="hl std">=</span><span class="hl num">.3</span><span class="hl std">)</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(c)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-27-1.png" title="plot of chunk unnamed-chunk-27" alt="plot of chunk unnamed-chunk-27" class="plot" /></div></div>
+    <p>
+    Suppose we want to create a "donut" shape based on this circle.
+    We need an offset larger than the circle and an offset smaller
+    than the circle, but because the circle is a closed shape, 
+    we can only use 
+    <code>grid.polyoffset()</code> to produce either a larger circle
+    or a smaller circle.
+  </p>
+    <p>
+    The following code uses the lower-level <code>xyListFromGrob()</code>
+    function to generate an xy-list (a list of sets of x/y coordinates)
+    from the circle grob.  
+  </p>
+<div class="chunk" id="unnamed-chunk-28"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">pts</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">xyListFromGrob</span><span class="hl std">(c)</span>
+<span class="hl std">pts</span>
+</pre></div>
+<div class="output"><pre class="knitr r">  [[1]]
+  x: 1.6 1.598816 1.595269 ... [100 values]
+  y: 1 1.037674 1.0752 ... [100 values]
+</pre></div>
+</div></div>
+    <p>
+    The result is a set of points around a circle.
+  </p>
+<div class="chunk" id="unnamed-chunk-29"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">grid.points</span><span class="hl std">(pts[[</span><span class="hl num">1</span><span class="hl std">]]</span><span class="hl opt">$</span><span class="hl std">x, pts[[</span><span class="hl num">1</span><span class="hl std">]]</span><span class="hl opt">$</span><span class="hl std">y,</span> <span class="hl kwc">default.units</span><span class="hl std">=</span><span class="hl str">&quot;in&quot;</span><span class="hl std">,</span> <span class="hl kwc">pch</span><span class="hl std">=</span><span class="hl str">&quot;.&quot;</span><span class="hl std">)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-29-1.png" title="plot of chunk unnamed-chunk-29" alt="plot of chunk unnamed-chunk-29" class="plot" /></div></div>
+    <p>
+    Now that we are dealing with a lower-level set of coordinates, rather than
+    higher-level grob, we can treat these coordinates as an open shape
+    rather than a closed shape.  For example, the following code
+    uses the <code>xyListToLine()</code> function to generate a series of line 
+    segments that go most of the way, but not all of the way, around the circle
+    (there is a small gap on the right of the circle).
+  </p>
+<div class="chunk" id="unnamed-chunk-30"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">grid.draw</span><span class="hl std">(</span><span class="hl kwd">xyListToLine</span><span class="hl std">(pts))</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-30-1.png" title="plot of chunk unnamed-chunk-30" alt="plot of chunk unnamed-chunk-30" class="plot" /></div></div>
+    <p>
+    The next code also treats the coordinates as an open shape,
+    but it calls the <code>polylineoffset()</code> function 
+    to generate a set of offset coordinates.  This creates an offset 
+    on both sides of the line and, because we specify 
+    <code>endtype="closedline"</code>, does so all of the way around 
+    the circle.
+    The result is still just coordinates, but it is now a list of 2 sets
+    of x/y coordinates (the outer edge of the donut and the inner edge
+    of the donut).
+  </p>
+<div class="chunk" id="unnamed-chunk-31"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">offsetpts</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">polylineoffset</span><span class="hl std">(pts,</span> <span class="hl kwc">delta</span><span class="hl std">=</span><span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">2</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span> <span class="hl kwc">endtype</span><span class="hl std">=</span><span class="hl str">&quot;closedline&quot;</span><span class="hl std">)</span>
+<span class="hl std">offsetpts</span>
+</pre></div>
+<div class="output"><pre class="knitr r">  [[1]]
+  [[1]]$x
+    [1] 1.0401476 1.0450844 1.0826100 1.0875176 1.1247465 1.1296054 1.1663906 1.1711817 1.2073780
+   [10] 1.2120825 1.2475470 1.2521462 1.2867391 1.2912149 1.3247995 1.3291342 1.3615781 1.3657546
+   [19] 1.3969297 1.4009316 1.4307148 1.4345262 1.4628001 1.4664060 1.4930589 1.4964450 1.5213718
+   [28] 1.5245249 1.5476271 1.5505347 1.5717212 1.5743717 1.5935590 1.5959420 1.6130542 1.6151604
+   [37] 1.6301300 1.6319510 1.6447190 1.6462476 1.6567636 1.6579937 1.6662162 1.6671431 1.6730396
+   [46] 1.6736595 1.6772067 1.6775173 1.6787013 1.6787013 1.6775173 1.6772067 1.6736595 1.6730396
+   [55] 1.6671431 1.6662162 1.6579937 1.6567636 1.6462476 1.6447190 1.6319510 1.6301300 1.6151604
+   [64] 1.6130542 1.5959420 1.5935590 1.5743717 1.5717212 1.5505347 1.5476271 1.5245249 1.5213718
+   [73] 1.4964450 1.4930589 1.4664060 1.4628001 1.4345262 1.4307148 1.4009316 1.3969297 1.3657546
+   [82] 1.3615781 1.3291342 1.3247995 1.2912149 1.2867391 1.2521462 1.2475470 1.2120825 1.2073780
+   [91] 1.1711817 1.1663906 1.1296054 1.1247465 1.0875176 1.0826100 1.0450844 1.0401476 1.0024733
+  [100] 0.9975267 0.9598524 0.9549156 0.9173900 0.9124824 0.8752535 0.8703946 0.8336094 0.8288183
+  [109] 0.7926220 0.7879175 0.7524530 0.7478538 0.7132609 0.7087851 0.6752005 0.6708658 0.6384219
+  [118] 0.6342454 0.6030703 0.5990684 0.5692852 0.5654738 0.5371999 0.5335940 0.5069411 0.5035550
+  [127] 0.4786282 0.4754751 0.4523729 0.4494653 0.4282788 0.4256283 0.4064410 0.4040580 0.3869458
+  [136] 0.3848396 0.3698700 0.3680490 0.3552810 0.3537524 0.3432364 0.3420063 0.3337838 0.3328569
+  [145] 0.3269604 0.3263405 0.3227933 0.3224827 0.3212987 0.3212987 0.3224827 0.3227933 0.3263405
+  [154] 0.3269604 0.3328569 0.3337838 0.3420063 0.3432364 0.3537524 0.3552810 0.3680490 0.3698700
+  [163] 0.3848396 0.3869458 0.4040580 0.4064410 0.4256283 0.4282788 0.4494653 0.4523729 0.4754751
+  [172] 0.4786282 0.5035550 0.5069411 0.5335940 0.5371999 0.5654738 0.5692852 0.5990684 0.6030703
+  [181] 0.6342454 0.6384219 0.6708658 0.6752005 0.7087851 0.7132609 0.7478538 0.7524530 0.7879175
+  [190] 0.7926220 0.8288183 0.8336094 0.8703946 0.8752535 0.9124824 0.9173900 0.9549156 0.9598524
+  [199] 0.9975267 1.0024733
+  
+  [[1]]$y
+    [1] 0.3224827 0.3227933 0.3263405 0.3269604 0.3328569 0.3337838 0.3420063 0.3432364 0.3537524
+   [10] 0.3552810 0.3680490 0.3698700 0.3848396 0.3869458 0.4040580 0.4064410 0.4256283 0.4282788
+   [19] 0.4494653 0.4523729 0.4754751 0.4786282 0.5035550 0.5069411 0.5335940 0.5371999 0.5654738
+   [28] 0.5692852 0.5990684 0.6030703 0.6342454 0.6384219 0.6708658 0.6752005 0.7087851 0.7132609
+   [37] 0.7478538 0.7524530 0.7879175 0.7926220 0.8288183 0.8336094 0.8703946 0.8752535 0.9124824
+   [46] 0.9173900 0.9549156 0.9598524 0.9975267 1.0024733 1.0401476 1.0450844 1.0826100 1.0875176
+   [55] 1.1247465 1.1296054 1.1663906 1.1711817 1.2073780 1.2120825 1.2475470 1.2521462 1.2867391
+   [64] 1.2912149 1.3247995 1.3291342 1.3615781 1.3657546 1.3969297 1.4009316 1.4307148 1.4345262
+   [73] 1.4628001 1.4664060 1.4930589 1.4964450 1.5213718 1.5245249 1.5476271 1.5505347 1.5717212
+   [82] 1.5743717 1.5935590 1.5959420 1.6130542 1.6151604 1.6301300 1.6319510 1.6447190 1.6462476
+   [91] 1.6567636 1.6579937 1.6662162 1.6671431 1.6730396 1.6736595 1.6772067 1.6775173 1.6787013
+  [100] 1.6787013 1.6775173 1.6772067 1.6736595 1.6730396 1.6671431 1.6662162 1.6579937 1.6567636
+  [109] 1.6462476 1.6447190 1.6319510 1.6301300 1.6151604 1.6130542 1.5959420 1.5935590 1.5743717
+  [118] 1.5717212 1.5505347 1.5476271 1.5245249 1.5213718 1.4964450 1.4930589 1.4664060 1.4628001
+  [127] 1.4345262 1.4307148 1.4009316 1.3969297 1.3657546 1.3615781 1.3291342 1.3247995 1.2912149
+  [136] 1.2867391 1.2521462 1.2475470 1.2120825 1.2073780 1.1711817 1.1663906 1.1296054 1.1247465
+  [145] 1.0875176 1.0826100 1.0450844 1.0401476 1.0024733 0.9975267 0.9598524 0.9549156 0.9173900
+  [154] 0.9124824 0.8752535 0.8703946 0.8336094 0.8288183 0.7926220 0.7879175 0.7524530 0.7478538
+  [163] 0.7132609 0.7087851 0.6752005 0.6708658 0.6384219 0.6342454 0.6030703 0.5990684 0.5692852
+  [172] 0.5654738 0.5371999 0.5335940 0.5069411 0.5035550 0.4786282 0.4754751 0.4523729 0.4494653
+  [181] 0.4282788 0.4256283 0.4064410 0.4040580 0.3869458 0.3848396 0.3698700 0.3680490 0.3552810
+  [190] 0.3537524 0.3432364 0.3420063 0.3337838 0.3328569 0.3269604 0.3263405 0.3227933 0.3224827
+  [199] 0.3212987 0.3212987
+  
+  
+  [[2]]
+  [[2]]$x
+    [1] 0.9672723 0.9346737 0.9023329 0.8703776 0.8389339 0.8081258 0.7780749 0.7488999 0.7207158
+   [10] 0.6936340 0.6677612 0.6431997 0.6200463 0.5983923 0.5783234 0.5599186 0.5432506 0.5283852
+   [19] 0.5153810 0.5042894 0.4951541 0.4880113 0.4828890 0.4798075 0.4787790 0.4798075 0.4828890
+   [28] 0.4880113 0.4951541 0.5042894 0.5153810 0.5283852 0.5432506 0.5599186 0.5783234 0.5983923
+   [37] 0.6200463 0.6431997 0.6677612 0.6936340 0.7207158 0.7488999 0.7780749 0.8081258 0.8389339
+   [46] 0.8703776 0.9023329 0.9346737 0.9672723 1.0000000 1.0327277 1.0653263 1.0976671 1.1296224
+   [55] 1.1610661 1.1918742 1.2219251 1.2511001 1.2792842 1.3063660 1.3322388 1.3568003 1.3799537
+   [64] 1.4016077 1.4216766 1.4400814 1.4567494 1.4716148 1.4846190 1.4957106 1.5048459 1.5119887
+   [73] 1.5171110 1.5201925 1.5212210 1.5201925 1.5171110 1.5119887 1.5048459 1.4957106 1.4846190
+   [82] 1.4716148 1.4567494 1.4400814 1.4216766 1.4016077 1.3799537 1.3568003 1.3322388 1.3063660
+   [91] 1.2792842 1.2511001 1.2219251 1.1918742 1.1610661 1.1296224 1.0976671 1.0653263 1.0327277
+  [100] 1.0000000
+  
+  [[2]]$y
+    [1] 0.4798075 0.4828890 0.4880113 0.4951541 0.5042894 0.5153810 0.5283852 0.5432506 0.5599186
+   [10] 0.5783234 0.5983923 0.6200463 0.6431997 0.6677612 0.6936340 0.7207158 0.7488999 0.7780749
+   [19] 0.8081258 0.8389339 0.8703776 0.9023329 0.9346737 0.9672723 1.0000000 1.0327277 1.0653263
+   [28] 1.0976671 1.1296224 1.1610661 1.1918742 1.2219251 1.2511001 1.2792842 1.3063660 1.3322388
+   [37] 1.3568003 1.3799537 1.4016077 1.4216766 1.4400814 1.4567494 1.4716148 1.4846190 1.4957106
+   [46] 1.5048459 1.5119887 1.5171110 1.5201925 1.5212210 1.5201925 1.5171110 1.5119887 1.5048459
+   [55] 1.4957106 1.4846190 1.4716148 1.4567494 1.4400814 1.4216766 1.4016077 1.3799537 1.3568003
+   [64] 1.3322388 1.3063660 1.2792842 1.2511001 1.2219251 1.1918742 1.1610661 1.1296224 1.0976671
+   [73] 1.0653263 1.0327277 1.0000000 0.9672723 0.9346737 0.9023329 0.8703776 0.8389339 0.8081258
+   [82] 0.7780749 0.7488999 0.7207158 0.6936340 0.6677612 0.6431997 0.6200463 0.5983923 0.5783234
+   [91] 0.5599186 0.5432506 0.5283852 0.5153810 0.5042894 0.4951541 0.4880113 0.4828890 0.4798075
+  [100] 0.4787790
+</pre></div>
+</div></div>
+    <p>
+    As a final step,
+    we can use <code>xyListToPath()</code> to convert the coordinates
+    back to a grob for drawing.
+  </p>
+<div class="chunk" id="unnamed-chunk-32"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">donut</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">xyListToPath</span><span class="hl std">(offsetpts,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(donut)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-32-1.png" title="plot of chunk unnamed-chunk-32" alt="plot of chunk unnamed-chunk-32" class="plot" /></div></div>
+    <h2>
+      <a name="applications">5. Applications</a>
+    </h2>
+    <p>
+    As with the original <code>grid.polyclip()</code> function,
+    the new functions in 'gridGeometry' have value as an additional
+    tool for creating shapes in R graphics.  This is potentially useful
+    because new (graphical) tools help us to
+    think about (graphical) problems in new ways and allow us to
+    come up with new (graphical) solutions.
+  </p>
+    <p>
+    As a simple example, consider the more complicated "gear" shape
+    shown below.  We saw in the introduction how easy it is to
+    create the "teeth" around the outside of the gear shape, but 
+    how can we create the wedge-shaped holes in the interior
+    of the gear shape, particularly with rounded corners on each wedge?
+  </p>
+    <p>
+      <img src="figure/fullcog-1.png" alt="a more complex gear shape">
+    </p>
+    <p>
+    With the concept of offset regions (with rounded corners) in our
+    toolbox, it is easier to think of ways to generate this shape.
+    To start with, we will use <code>grid.polyclip()</code> to 
+    subtract horizontal and vertical bars from a medium-sized circle.
+    The following code shows the circles and bars that we are working with.
+  </p>
+<div class="chunk" id="paths"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">medC</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">circleGrob</span><span class="hl std">(</span><span class="hl kwc">r</span><span class="hl std">=</span><span class="hl num">.2</span><span class="hl std">,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl num">NA</span><span class="hl std">))</span>
+<span class="hl std">hbar</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">rectGrob</span><span class="hl std">(</span><span class="hl kwc">height</span><span class="hl std">=</span><span class="hl num">.1</span><span class="hl std">,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl num">NA</span><span class="hl std">))</span>
+<span class="hl std">vbar</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">rectGrob</span><span class="hl std">(</span><span class="hl kwc">width</span><span class="hl std">=</span><span class="hl num">.1</span><span class="hl std">,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl num">NA</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(medC)</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(hbar)</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(vbar)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/paths-1.png" title="plot of chunk paths" alt="plot of chunk paths" class="plot" /></div></div>
+    <p>
+    The following code subtracts the bars from the medium-sized
+    circle, which leaves
+    four wedges.
+  </p>
+<div class="chunk" id="wedges"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">wedges</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">polyclipGrob</span><span class="hl std">(medC,</span> <span class="hl kwd">gList</span><span class="hl std">(hbar, vbar),</span> <span class="hl str">&quot;minus&quot;</span><span class="hl std">,</span>
+                         <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(wedges)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/wedges-1.png" title="plot of chunk wedges" alt="plot of chunk wedges" class="plot" /></div></div>
+    <p>
+    The next code generates offset regions based on the four wedges.
+    This produces the curved corners on the wedges.
+  </p>
+<div class="chunk" id="unnamed-chunk-33"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">roundedWedges</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">polyoffsetGrob</span><span class="hl std">(wedges,</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">1</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span>
+                                <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(roundedWedges)</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-33-1.png" title="plot of chunk unnamed-chunk-33" alt="plot of chunk unnamed-chunk-33" class="plot" /></div></div>
+    <p>
+    The final step is to subtract those wedges from the large circle
+    that we started with in the introduction
+    (as well as subtracting the small circles to make the teeth).
+  </p>
+<div class="chunk" id="fullcog"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">grid.polyclip</span><span class="hl std">(bigC,</span> <span class="hl kwd">gList</span><span class="hl std">(littleC, roundedWedges),</span> <span class="hl str">&quot;minus&quot;</span><span class="hl std">,</span>
+              <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/fullcog-1.png" title="plot of chunk fullcog" alt="plot of chunk fullcog" class="plot" /></div></div>
+    <p>
+    The first author has also made use of the new offset facilities
+    in 'gridGeometry' to create shapes for an acoustic similation app
+    called AiHear (<a href="#AiHear">Tetra Tech, 2022</a>).  For example, the offset facilities
+    made it easy to create an "H"
+    shape, with rounded ends on the verticals, as shown below.
+  </p>
+    <p>
+    The relatively complex final outline is not described directly.
+    Instead, a simple series of straight lines is described
+    (shown in grey below)
+    and then the final result is obtained from the union
+    of the offset regions based on the straight lines.
+  </p>
+<div class="chunk" id="H"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">l1</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">linesGrob</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">=</span><span class="hl kwd">rep</span><span class="hl std">(</span><span class="hl num">0.3</span><span class="hl std">,</span> <span class="hl num">2</span><span class="hl std">),</span> <span class="hl kwc">y</span><span class="hl std">=</span><span class="hl kwd">c</span><span class="hl std">(</span><span class="hl num">0.25</span><span class="hl std">,</span> <span class="hl num">0.75</span><span class="hl std">),</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl std">l2</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">linesGrob</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">=</span><span class="hl kwd">rep</span><span class="hl std">(</span><span class="hl num">0.7</span><span class="hl std">,</span> <span class="hl num">2</span><span class="hl std">),</span> <span class="hl kwc">y</span><span class="hl std">=</span><span class="hl kwd">c</span><span class="hl std">(</span><span class="hl num">0.25</span><span class="hl std">,</span> <span class="hl num">0.75</span><span class="hl std">),</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl std">l3</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">linesGrob</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">=</span><span class="hl kwd">c</span><span class="hl std">(</span><span class="hl num">0.3</span><span class="hl std">,</span> <span class="hl num">0.7</span><span class="hl std">),</span> <span class="hl kwc">y</span><span class="hl std">=</span><span class="hl kwd">rep</span><span class="hl std">(</span><span class="hl num">0.5</span><span class="hl std">,</span> <span class="hl num">2</span><span class="hl std">),</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+<span class="hl std">l</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">gList</span><span class="hl std">(l1, l2, l3)</span>
+<span class="hl kwd">grid.draw</span><span class="hl std">(l)</span>
+<span class="hl kwd">grid.polylineoffset</span><span class="hl std">(l,</span> <span class="hl num">0.05</span><span class="hl std">,</span> <span class="hl kwc">endtype</span> <span class="hl std">=</span> <span class="hl str">&quot;openround&quot;</span><span class="hl std">,</span> <span class="hl kwc">jointype</span> <span class="hl std">=</span> <span class="hl str">&quot;round&quot;</span><span class="hl std">,</span>
+                    <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl num">NA</span><span class="hl std">))</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/H-1.png" title="plot of chunk H" alt="plot of chunk H" class="plot" /></div></div>
+    <p>
+    This is a nice example of a simple solution to a problem 
+    only becoming apparent
+    once the idea of offset regions has been introduced.
+    The image below shows the "H" that was created in R being
+    used in the AiHear app.
+  </p>
+    <p>
+      <img src="AiHear.png" width="200">
+    </p>
+    <p>
+    An example of a 
+    <em>statistical</em> graphics application
+    is the creation of non-standard data symbols.
+    For example, the code below draws "donut" data symbols
+    in a 'ggplot2' plot (<a href="#ggplot2">Wickham, 2016</a>;  the 'gggrid' package is 
+    used to combine low-level 'grid' drawing with the 'ggplot2' plot;  
+    <a href="#pkg:gggrid">Murrell, 2022b</a>).
+    This code builds a "donutGrob" object for each data point
+    and defines a <code>makeContent()</code> method for "donutGrob"s 
+    so that the calculation of offset regions happens when the 
+    data points are drawn (rather than when they are created).
+  </p>
+<div class="chunk" id="unnamed-chunk-34"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">donutGrob</span> <span class="hl kwb">&lt;-</span> <span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">,</span> <span class="hl kwc">y</span><span class="hl std">) {</span>
+    <span class="hl kwd">gTree</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">=x,</span> <span class="hl kwc">y</span><span class="hl std">=y,</span> <span class="hl kwc">cl</span><span class="hl std">=</span><span class="hl str">&quot;donutGrob&quot;</span><span class="hl std">)</span>
+<span class="hl std">}</span>
+<span class="hl std">makeContent.donutGrob</span> <span class="hl kwb">&lt;-</span> <span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">) {</span>
+    <span class="hl std">circles</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">mapply</span><span class="hl std">(circleGrob, x</span><span class="hl opt">$</span><span class="hl std">x, x</span><span class="hl opt">$</span><span class="hl std">y,</span> <span class="hl kwc">MoreArgs</span><span class="hl std">=</span><span class="hl kwd">list</span><span class="hl std">(</span><span class="hl kwc">r</span> <span class="hl std">=</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">1.5</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">)),</span>
+                      <span class="hl kwc">SIMPLIFY</span><span class="hl std">=</span><span class="hl num">FALSE</span><span class="hl std">)</span>
+    <span class="hl std">pts</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">lapply</span><span class="hl std">(circles, xyListFromGrob)</span>
+    <span class="hl std">offsetpts</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">lapply</span><span class="hl std">(pts, polylineoffset,</span> <span class="hl kwc">delta</span><span class="hl std">=</span><span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">.5</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span>
+                        <span class="hl kwc">endtype</span><span class="hl std">=</span><span class="hl str">&quot;closedline&quot;</span><span class="hl std">)</span>
+    <span class="hl std">donuts</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">lapply</span><span class="hl std">(offsetpts, xyListToPath,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;white&quot;</span><span class="hl std">))</span>
+    <span class="hl kwd">setChildren</span><span class="hl std">(x,</span> <span class="hl kwd">do.call</span><span class="hl std">(gList, donuts))</span>
+<span class="hl std">}</span>
+<span class="hl std">donut</span> <span class="hl kwb">&lt;-</span> <span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">data</span><span class="hl std">,</span> <span class="hl kwc">coords</span><span class="hl std">) {</span>
+    <span class="hl kwd">donutGrob</span><span class="hl std">(coords</span><span class="hl opt">$</span><span class="hl std">x, coords</span><span class="hl opt">$</span><span class="hl std">y)</span>
+<span class="hl std">}</span>
+</pre></div>
+</div></div>
+<div class="chunk" id="unnamed-chunk-35"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">library</span><span class="hl std">(gggrid)</span>
+</pre></div>
+</div></div>
+<div class="chunk" id="unnamed-chunk-36"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">ggplot</span><span class="hl std">(mtcars)</span> <span class="hl opt">+</span>
+    <span class="hl kwd">grid_panel</span><span class="hl std">(donut,</span> <span class="hl kwd">aes</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">=disp,</span> <span class="hl kwc">y</span><span class="hl std">=mpg,</span> <span class="hl kwc">colour</span><span class="hl std">=</span><span class="hl kwd">as.factor</span><span class="hl std">(am),</span> <span class="hl kwc">fill</span><span class="hl std">=hp))</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-36-1.png" title="plot of chunk unnamed-chunk-36" alt="plot of chunk unnamed-chunk-36" class="plot" /></div></div>
+    <p>
+    The difference between drawing donut symbols and just open circles using
+    a thick line width is that the donuts have a separate 
+    (interior and exterior) border and fill.  This is emphasised 
+    in the following variation where the donut borders are coloured
+    to represent whether cars are manual (blueish) or automatic (reddish)
+    and the donut
+    fills represent the horsepower (dark to light).  
+    The manual car with the highest
+    horsepower is clearly visible.
+  </p>
+<div class="chunk" id="unnamed-chunk-37"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">donutGrob</span> <span class="hl kwb">&lt;-</span> <span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">,</span> <span class="hl kwc">y</span><span class="hl std">,</span> <span class="hl kwc">colour</span><span class="hl std">,</span> <span class="hl kwc">fill</span><span class="hl std">) {</span>
+    <span class="hl kwd">gTree</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">=x,</span> <span class="hl kwc">y</span><span class="hl std">=y,</span> <span class="hl kwc">colour</span><span class="hl std">=colour,</span> <span class="hl kwc">fill</span><span class="hl std">=fill,</span> <span class="hl kwc">cl</span><span class="hl std">=</span><span class="hl str">&quot;donutGrob&quot;</span><span class="hl std">)</span>
+<span class="hl std">}</span>
+<span class="hl std">cook</span> <span class="hl kwb">&lt;-</span> <span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">offsetpts</span><span class="hl std">,</span> <span class="hl kwc">colour</span><span class="hl std">,</span> <span class="hl kwc">fill</span><span class="hl std">) {</span>
+    <span class="hl kwd">xyListToPath</span><span class="hl std">(offsetpts,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">col</span><span class="hl std">=colour,</span> <span class="hl kwc">fill</span><span class="hl std">=fill,</span> <span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">2</span><span class="hl std">))</span>
+<span class="hl std">}</span>
+<span class="hl std">makeContent.donutGrob</span> <span class="hl kwb">&lt;-</span> <span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">) {</span>
+    <span class="hl std">circles</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">mapply</span><span class="hl std">(circleGrob, x</span><span class="hl opt">$</span><span class="hl std">x, x</span><span class="hl opt">$</span><span class="hl std">y,</span> <span class="hl kwc">MoreArgs</span><span class="hl std">=</span><span class="hl kwd">list</span><span class="hl std">(</span><span class="hl kwc">r</span> <span class="hl std">=</span> <span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">1.5</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">)),</span>
+                      <span class="hl kwc">SIMPLIFY</span><span class="hl std">=</span><span class="hl num">FALSE</span><span class="hl std">)</span>
+    <span class="hl std">pts</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">lapply</span><span class="hl std">(circles, xyListFromGrob)</span>
+    <span class="hl std">offsetpts</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">lapply</span><span class="hl std">(pts, polylineoffset,</span> <span class="hl kwc">delta</span><span class="hl std">=</span><span class="hl kwd">unit</span><span class="hl std">(</span><span class="hl num">.5</span><span class="hl std">,</span> <span class="hl str">&quot;mm&quot;</span><span class="hl std">),</span>
+                        <span class="hl kwc">endtype</span><span class="hl std">=</span><span class="hl str">&quot;closedline&quot;</span><span class="hl std">)</span>
+    <span class="hl std">donuts</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">mapply</span><span class="hl std">(cook, offsetpts, x</span><span class="hl opt">$</span><span class="hl std">colour, x</span><span class="hl opt">$</span><span class="hl std">fill,</span> <span class="hl kwc">SIMPLIFY</span><span class="hl std">=</span><span class="hl num">FALSE</span><span class="hl std">)</span>
+    <span class="hl kwd">setChildren</span><span class="hl std">(x,</span> <span class="hl kwd">do.call</span><span class="hl std">(gList, donuts))</span>
+<span class="hl std">}</span>
+<span class="hl std">donut</span> <span class="hl kwb">&lt;-</span> <span class="hl kwa">function</span><span class="hl std">(</span><span class="hl kwc">data</span><span class="hl std">,</span> <span class="hl kwc">coords</span><span class="hl std">) {</span>
+    <span class="hl kwd">donutGrob</span><span class="hl std">(coords</span><span class="hl opt">$</span><span class="hl std">x, coords</span><span class="hl opt">$</span><span class="hl std">y, coords</span><span class="hl opt">$</span><span class="hl std">colour, coords</span><span class="hl opt">$</span><span class="hl std">fill)</span>
+<span class="hl std">}</span>
+</pre></div>
+</div></div>
+<div class="chunk" id="unnamed-chunk-38"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl kwd">ggplot</span><span class="hl std">(mtcars)</span> <span class="hl opt">+</span>
+    <span class="hl kwd">grid_panel</span><span class="hl std">(donut,</span> <span class="hl kwd">aes</span><span class="hl std">(</span><span class="hl kwc">x</span><span class="hl std">=disp,</span> <span class="hl kwc">y</span><span class="hl std">=mpg,</span> <span class="hl kwc">colour</span><span class="hl std">=</span><span class="hl kwd">as.factor</span><span class="hl std">(am),</span> <span class="hl kwc">fill</span><span class="hl std">=hp))</span>
+</pre></div>
+</div><div class="rimage default"><img src="figure/unnamed-chunk-38-1.png" title="plot of chunk unnamed-chunk-38" alt="plot of chunk unnamed-chunk-38" class="plot" /></div></div>
+    <h2>
+      <a name="minkowski">6. Minkowski Sums</a>
+    </h2>
+    <p>
+    In addition to the functions for generating offset regions,
+    there is also new support for generating 
+    <a href="https://en.wikipedia.org/wiki/Minkowski_addition">Minkowski Sums</a>.
+    The main function is <code>grid.minkowski()</code>, which takes
+    two shapes, a "pattern" and a "path", and generates a new shape
+    by "adding" the pattern to the path.
+  </p>
+    <p>
+    For certain cases, a Minkowski Sum generates a result just like an
+    offset region.  For example, the following code adds a circle
+    pattern to a triangular path.  This is done by adding the circle to
+    every location on the triangle.  The result (black outline with grey
+    fill) is like an offset region
+    for the triangle (the original triangle is shown in red and 
+    examples of the circle being added to the vertices of the triangle
+    are shown in green).
+  </p>
+<div class="chunk" id="mink1"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">circle</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">circleGrob</span><span class="hl std">(</span><span class="hl num">0</span><span class="hl std">,</span> <span class="hl num">0</span><span class="hl std">,</span> <span class="hl kwc">r</span><span class="hl std">=</span><span class="hl num">.1</span><span class="hl std">,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;green&quot;</span><span class="hl std">,</span> <span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl num">NA</span><span class="hl std">))</span>
+<span class="hl std">triangle</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">polygonGrob</span><span class="hl std">(</span><span class="hl kwd">c</span><span class="hl std">(</span><span class="hl num">.3</span><span class="hl std">,</span> <span class="hl num">.5</span><span class="hl std">,</span> <span class="hl num">.7</span><span class="hl std">),</span> <span class="hl kwd">c</span><span class="hl std">(</span><span class="hl num">.3</span><span class="hl std">,</span> <span class="hl num">.7</span><span class="hl std">,</span> <span class="hl num">.3</span><span class="hl std">),</span>
+                        <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">,</span> <span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl num">NA</span><span class="hl std">))</span>
+<span class="hl kwd">grid.minkowski</span><span class="hl std">(circle, triangle,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">3</span><span class="hl std">,</span> <span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+</pre></div>
+</div></div>
+<div class="chunk" id="unnamed-chunk-39"><div class="rimage default"><img src="figure/unnamed-chunk-39-1.png" title="plot of chunk unnamed-chunk-39" alt="plot of chunk unnamed-chunk-39" class="plot" /></div></div>
+    <p>
+    However, the pattern can be any shape, so the final result
+    is more general than the offset regions described previously.
+    For example, the following code adds a rectangle pattern
+    to the triangle.
+  </p>
+<div class="chunk" id="mink2"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">rect</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">rectGrob</span><span class="hl std">(</span><span class="hl num">0</span><span class="hl std">,</span> <span class="hl num">0</span><span class="hl std">,</span> <span class="hl kwc">width</span><span class="hl std">=</span><span class="hl num">.2</span><span class="hl std">,</span> <span class="hl kwc">height</span><span class="hl std">=</span><span class="hl num">.2</span><span class="hl std">,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;green&quot;</span><span class="hl std">,</span> <span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl num">NA</span><span class="hl std">))</span>
+<span class="hl kwd">grid.minkowski</span><span class="hl std">(rect, triangle,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">3</span><span class="hl std">,</span> <span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+</pre></div>
+</div></div>
+<div class="chunk" id="unnamed-chunk-40"><div class="rimage default"><img src="figure/unnamed-chunk-40-1.png" title="plot of chunk unnamed-chunk-40" alt="plot of chunk unnamed-chunk-40" class="plot" /></div></div>
+    <!--
+  <p>
+    Watch out for brushes that create holes !
+
+    Possibly a limitation of Clipper itself.  See ...
+
+    https://sourceforge.net/p/polyclipping/discussion/1148419/thread/8488d4e8/
+  </p>
+
+  <rcode fig.width="2" fig.height="2"><![CDATA[
+bigRect <- rectGrob(0, 0, width=.5, height=.5, gp=gpar(col="green", fill=NA))
+grid.newpage()
+grid.minkowski(bigRect, triangle, gp=gpar(lwd=3))
+grid.draw(triangle)
+grid.draw(editGrob(bigRect, x=unit(.3, "npc"), y=unit(.3, "npc")))
+grid.draw(editGrob(bigRect, x=unit(.5, "npc"), y=unit(.7, "npc")))
+grid.draw(editGrob(bigRect, x=unit(.7, "npc"), y=unit(.3, "npc")))
+  ]]></rcode>
+-->
+    <!--
+  <p>
+    Concave shapes ?
+  </p>
+
+  <rcode fig.width="2" fig.height="2"><![CDATA[
+concave <- polygonGrob(c(.3, .5, .7, .5), c(.3, .7, .3, .5), 
+                       gp=gpar(col="red", fill=NA))
+grid.newpage()
+grid.minkowski(rect, concave, gp=gpar(lwd=3, fill="grey"))
+grid.draw(concave)
+grid.draw(editGrob(rect, x=unit(.3, "npc"), y=unit(.3, "npc")))
+grid.draw(editGrob(rect, x=unit(.5, "npc"), y=unit(.7, "npc")))
+grid.draw(editGrob(rect, x=unit(.7, "npc"), y=unit(.3, "npc")))
+grid.draw(editGrob(rect, x=unit(.5, "npc"), y=unit(.5, "npc")))
+  ]]></rcode>
+-->
+    <p>
+    The examples so far have used a pattern that is centred on (0, 0),
+    so the result is just an expanded version of the original path.
+    However, the pattern can also induce a translation of the path.
+    As an extreme example, the following code adds a tiny circle to
+    the triangle.  The circle has almost zero width so it does not
+    expand the triangle, but the circle is at (0, .2) so the result
+    is translated vertically.
+  </p>
+<div class="chunk" id="mink3"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">pt</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">circleGrob</span><span class="hl std">(</span><span class="hl num">0</span><span class="hl std">,</span> <span class="hl num">.2</span><span class="hl std">,</span> <span class="hl kwc">r</span><span class="hl std">=</span><span class="hl num">0.001</span><span class="hl std">,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;green&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.minkowski</span><span class="hl std">(pt, triangle,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">3</span><span class="hl std">,</span> <span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+</pre></div>
+</div></div>
+<div class="chunk" id="unnamed-chunk-41"><div class="rimage default"><img src="figure/unnamed-chunk-41-1.png" title="plot of chunk unnamed-chunk-41" alt="plot of chunk unnamed-chunk-41" class="plot" /></div></div>
+    <p>
+    In full generality, the Minkowski Sum produces the sum of all vectors
+    within the pattern and the path.  This is shown in the following 
+    diagram:  the drawing region is represented by a grey rectangle,
+    with its origin at the bottom-left corner of the grey rectangle;
+    the pattern, a rectangle, is drawn in blue to show that it is
+    offset from the origin;  the path, a triangle, is drawn in red;
+    and examples of the pattern being added to the path (at the 
+    triangle vertices) are drawn in green.
+  </p>
+<div class="chunk" id="mink4"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">smallRect</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">rectGrob</span><span class="hl std">(</span><span class="hl num">0</span><span class="hl std">,</span> <span class="hl num">.2</span><span class="hl std">,</span> <span class="hl kwc">width</span><span class="hl std">=</span><span class="hl num">.2</span><span class="hl std">,</span> <span class="hl kwc">height</span><span class="hl std">=</span><span class="hl num">.2</span><span class="hl std">,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;green&quot;</span><span class="hl std">,</span> <span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl num">NA</span><span class="hl std">))</span>
+<span class="hl kwd">grid.minkowski</span><span class="hl std">(smallRect, triangle,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">3</span><span class="hl std">,</span> <span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+</pre></div>
+</div></div>
+<div class="chunk" id="unnamed-chunk-42"><div class="rimage default"><img src="figure/unnamed-chunk-42-1.png" title="plot of chunk unnamed-chunk-42" alt="plot of chunk unnamed-chunk-42" class="plot" /></div></div>
+    <p>
+    The path can also be an open shape.  For example, 
+    the following code adds a rectangle pattern to a line. 
+  </p>
+<div class="chunk" id="mink5"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">line</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">linesGrob</span><span class="hl std">(</span><span class="hl kwd">c</span><span class="hl std">(</span><span class="hl num">.3</span><span class="hl std">,</span> <span class="hl num">.5</span><span class="hl std">,</span> <span class="hl num">.7</span><span class="hl std">),</span> <span class="hl kwd">c</span><span class="hl std">(</span><span class="hl num">.3</span><span class="hl std">,</span> <span class="hl num">.7</span><span class="hl std">,</span> <span class="hl num">.3</span><span class="hl std">),</span>
+                  <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;red&quot;</span><span class="hl std">))</span>
+<span class="hl kwd">grid.minkowski</span><span class="hl std">(rect, line,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">3</span><span class="hl std">,</span> <span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+</pre></div>
+</div></div>
+<div class="chunk" id="unnamed-chunk-43"><div class="rimage default"><img src="figure/unnamed-chunk-43-1.png" title="plot of chunk unnamed-chunk-43" alt="plot of chunk unnamed-chunk-43" class="plot" /></div></div>
+    <p>
+    This usage allows us to create shapes by stroking a path
+    with a pen, in the spirit of METAFONT (<a href="#metafont">Knuth, 1989</a>) 
+    or METAPOST (<a href="#metapost-hobby">Hobby, 1998</a>).
+    For example, the following code creates an ellipsoid pen (pattern)
+    and strokes the line with that pen (adds the pattern to the path).
+  </p>
+<div class="chunk" id="mink6"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl std">pen</span> <span class="hl kwb">&lt;-</span> <span class="hl kwd">xsplineGrob</span><span class="hl std">(</span><span class="hl kwd">c</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">.1</span><span class="hl std">,</span> <span class="hl num">0</span><span class="hl std">,</span> <span class="hl num">.1</span><span class="hl std">,</span> <span class="hl num">0</span><span class="hl std">),</span> <span class="hl kwd">c</span><span class="hl std">(</span><span class="hl opt">-</span><span class="hl num">.1</span><span class="hl std">,</span> <span class="hl num">.1</span><span class="hl std">,</span> <span class="hl num">.1</span><span class="hl std">,</span> <span class="hl opt">-</span><span class="hl num">.1</span><span class="hl std">),</span>
+                   <span class="hl kwc">open</span><span class="hl std">=</span><span class="hl num">FALSE</span><span class="hl std">,</span> <span class="hl kwc">shape</span><span class="hl std">=</span><span class="hl num">1</span><span class="hl std">,</span>
+                   <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">col</span><span class="hl std">=</span><span class="hl str">&quot;green&quot;</span><span class="hl std">,</span> <span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl num">NA</span><span class="hl std">))</span>
+<span class="hl kwd">grid.minkowski</span><span class="hl std">(pen, line,</span> <span class="hl kwc">gp</span><span class="hl std">=</span><span class="hl kwd">gpar</span><span class="hl std">(</span><span class="hl kwc">lwd</span><span class="hl std">=</span><span class="hl num">3</span><span class="hl std">,</span> <span class="hl kwc">fill</span><span class="hl std">=</span><span class="hl str">&quot;grey&quot;</span><span class="hl std">))</span>
+</pre></div>
+</div></div>
+<div class="chunk" id="unnamed-chunk-44"><div class="rimage default"><img src="figure/unnamed-chunk-44-1.png" title="plot of chunk unnamed-chunk-44" alt="plot of chunk unnamed-chunk-44" class="plot" /></div></div>
+    <h2>
+      <a name="summary">7. Summary</a>
+    </h2>
+    <p>
+    New functions in the 'gridGeometry' package provide access
+    to the facilities in the 'polyclip' package for generating
+    offset regions.  The main interface
+    is provided by <code>grid.polyoffset()</code> for closed
+    shapes and <code>grid.polylineoffset()</code> for open shapes.
+    There is also a new interface for generating Minkowski Sums
+    via the <code>grid.minkowski()</code> function.
+  </p>
+    <h2>
+      <a name="requirements">8. Technical requirements</a>
+    </h2>
+    <p>
+    The examples and discussion in this report relate to 
+    <a href="https://github.com/pmur002/gridgeometry/releases/tag/v0.4-0">version 0.4-0</a>
+    of the 'gridGeometry' package.
+  </p>
+    <p>
+    This report was generated within a Docker container
+    (see <a href="#Resources">Resources</a> section below).
+  </p>
+    <h2>
+      <a name="Resources">9. Resources</a>
+    </h2>
+    <ul>
+      <li>
+      The <a href="offset.cml">raw source file</a> for this
+      report, a <a href="offset.xml">valid XML</a>
+      transformation of the source file, a <a href="offset.Rhtml">'knitr' document</a> generated from
+      the XML file, 
+      two <a href="toc.R">R</a> <a href="bib.R">files</a> and
+      the <a href="offset.bib">bibtex file</a>
+      that are used to generate the table of contents and reference sections,
+      two <a href="common.xsl">XSL</a> <a href="knitr.xsl">files</a> and an 
+      <a href="knit.R">R file</a> that are used to transform the XML to
+      the 'knitr' document, and a <a href="Makefile">Makefile</a> that
+      contains code for the other transformations and coordinates
+      everything.  
+      These materials are also available
+      on <a href="https://github.com/pmur002/offset-report/releases/tag/v1">github</a>.
+    </li>
+      <li>
+      This report was generated within a 
+      <a href="https://www.docker.com/">Docker</a> container.
+      The Docker command to build the report is included in the Makefile above.
+      The Docker image for the container is available from
+      <a href="https://hub.docker.com/r/pmur002/offset-report/">Docker Hub</a>;
+      alternatively, the image can be rebuilt from its 
+      <a href="Dockerfile">Dockerfile</a>.
+    </li>
+    </ul>
+    <h2>How to cite this report</h2>
+    <p>
+    Wong, J., and Murrell, P. (2022). "Offsetting Lines and Polygons in 'grid'" 
+    Technical Report 2022-??, Department of Statistics, The University of Auckland. 
+    Version 1.
+    [ <a href="how-to-cite.bib">bib</a> |
+      <a href="http://dx.doi.org/">DOI</a> | 
+      <a href="https://stattech.blogs.auckland.ac.nz/">http</a> ]
+  </p>
+    <h2>
+      <a name="references">10. References</a>
+    </h2>
+    <dl>
+      <dt>
+[<a name="metapost-hobby">Hobby, 1998</a>]
+</dt>
+      <dd>
+Hobby, J. (1998).
+ A User's Manual for MetaPost.
+[ <a href="offset-bib_bib.html#metapost-hobby">bib</a> ]
+
+</dd>
+      <dt>
+[<a name="pkg:polyclip">Johnson and Baddeley, 2019</a>]
+</dt>
+      <dd>
+Johnson, A. and Baddeley, A. (2019).
+ <em>polyclip: Polygon Clipping</em>.
+ R package version 1.10-0.
+[ <a href="offset-bib_bib.html#pkg:polyclip">bib</a> | 
+<a href="https://CRAN.R-project.org/package=polyclip">http</a> ]
+
+</dd>
+      <dt>
+[<a name="metafont">Knuth, 1989</a>]
+</dt>
+      <dd>
+Knuth, D. E. (1989).
+ <em>The Metafont Book</em>.
+ Addison-Wesley Longman Publishing Co., Inc., USA.
+[ <a href="offset-bib_bib.html#metafont">bib</a> ]
+
+</dd>
+      <dt>
+[<a name="murrell-geometry-engine-2019">Murrell, 2019</a>]
+</dt>
+      <dd>
+Murrell, P. (2019).
+ A geometry engine interface for 'grid'.
+ Technical Report 2019-01, Department of Statistics, The University of
+  Auckland.
+ version 4.
+[ <a href="offset-bib_bib.html#murrell-geometry-engine-2019">bib</a> | 
+<a href="http://dx.doi.org/10.17608/k6.auckland.7796831">DOI</a> | 
+<a href="https://stattech.wordpress.fos.auckland.ac.nz/2019/03/04/2019-01-a-geomet%E2%80%A6terface-for-grid/">http</a> ]
+
+</dd>
+      <dt>
+[<a name="murrell-coords-2022">Murrell, 2022a</a>]
+</dt>
+      <dd>
+Murrell, P. (2022a).
+ Constructive geometry for complex grobs.
+ Technical Report 2022-01, Department of Statistics, The University of
+  Auckland.
+ version 1.
+[ <a href="offset-bib_bib.html#murrell-coords-2022">bib</a> | 
+<a href="http://dx.doi.org/10.17608/k6.auckland.19945814">DOI</a> | 
+<a href="https://stattech.blogs.auckland.ac.nz/2022/06/01/2022-02-constructive-geometry-for-complex-grobs">http</a> ]
+
+</dd>
+      <dt>
+[<a name="pkg:gggrid">Murrell, 2022b</a>]
+</dt>
+      <dd>
+Murrell, P. (2022b).
+ <em>gggrid: Draw with 'grid' in 'ggplot2'</em>.
+ R package version 0.2-0.
+[ <a href="offset-bib_bib.html#pkg:gggrid">bib</a> | 
+<a href="https://CRAN.R-project.org/package=gggrid">http</a> ]
+
+</dd>
+      <dt>
+[<a name="R">R Core Team, 2022</a>]
+</dt>
+      <dd>
+R Core Team (2022).
+ <em>R: A Language and Environment for Statistical Computing</em>.
+ R Foundation for Statistical Computing, Vienna, Austria.
+[ <a href="offset-bib_bib.html#R">bib</a> | 
+<a href="https://www.R-project.org/">http</a> ]
+
+</dd>
+      <dt>
+[<a name="AiHear">Tetra Tech, 2022</a>]
+</dt>
+      <dd>
+Tetra Tech (2022).
+ <em>AiHear</em>.
+[ <a href="offset-bib_bib.html#AiHear">bib</a> | 
+<a href="https://www.aihear.ai/">http</a> ]
+
+</dd>
+      <dt>
+[<a name="ggplot2">Wickham, 2016</a>]
+</dt>
+      <dd>
+Wickham, H. (2016).
+ <em>ggplot2: Elegant Graphics for Data Analysis</em>.
+ Springer-Verlag New York.
+[ <a href="offset-bib_bib.html#ggplot2">bib</a> | 
+<a href="https://ggplot2.tidyverse.org">http</a> ]
+
+</dd>
+    </dl>
+    <hr>
+    <p><a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img class="CC" alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png"></a><br><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">This document</span>
+    by <span xmlns:cc="http://creativecommons.org/ns#" property="cc:attributionName">Paul
+    Murrell</span> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative
+    Commons Attribution 4.0 International License</a>.
+  </p>
+  </body>
+</html>

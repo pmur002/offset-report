@@ -1,0 +1,938 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html>
+  <head>
+    <style type="text/css">
+    @media print {
+      body { }
+      p.img { text-align: center; page-break-inside: avoid }
+      img.CC { display: inline }
+    }
+    @media screen {
+      body { max-width: 800px; margin: auto }
+      p.img { text-align: center }
+      img.CC { display: inline }
+    }
+    p.date {
+      font-size: smaller;
+      margin: 0;
+    }
+    p.versionHistory {
+      color: gray
+    }
+    p.versionHistory a {
+      color: gray
+    }
+    p.ref {
+      text-indent: -2em;
+      padding-left: 2em;
+    }
+    p.fig {
+      text-align: left;
+    }
+    p.fig img, img.plot {
+      box-shadow: 10px 10px 20px;
+      margin-top: 10px;
+      margin-bottom: 20px;      
+    }
+  </style>
+    <script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']]
+  }
+};
+  </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+  </script>
+    <title>Offsetting Lines and Polygons in 'grid'</title>
+  </head>
+  <body>
+    <h1>Offsetting Lines and Polygons in 'grid'</h1>
+    <p>
+      <span style="font-style: italic">by Jack Wong and Paul Murrell</span>
+      <a href="http://orcid.org">
+        <img alt="" src="https://www.stat.auckland.ac.nz/~paul/ORCID/ORCiD.png" style="width: 16px; height: 16px; vertical-align: middle"/>
+      </a>
+      <span style="font-family: mono; font-size: small">
+        <a href="http://orcid.org/0000-0002-3224-8858">http://orcid.org/0000-0002-3224-8858</a>
+      </span>
+    </p>
+    <p class="date">
+    Version 1:  
+    <rcode echo="FALSE" results="asis"><![CDATA[
+cat(format(Sys.Date(), "%A %d %B %Y"))
+    ]]></rcode>
+  </p>
+    <rcode id="init" echo="FALSE" message="FALSE" results="hide"><![CDATA[
+opts_chunk$set(comment=" ", tidy=FALSE, 
+               dev="png", ## dev="svg",
+               dpi=96)
+options(width=100)
+## For wonky desktop set up
+options(bitmapType="cairo")
+  ]]></rcode>
+    <rcode echo="FALSE" message="FALSE"><![CDATA[
+    library(grid)
+  ]]></rcode>
+    <hr/>
+    <p><a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img class="CC" alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png"/></a><br/><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">This document</span>
+    by <span xmlns:cc="http://creativecommons.org/ns#" property="cc:attributionName">Jack Wong and Paul
+    Murrell</span> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative
+    Commons Attribution 4.0 International License</a>.
+  </p>
+    <hr/>
+    <p>
+    This document describes new functions in the 'gridGeometry' package
+    for R that generate offset regions and Minkowski Sums
+    for lines and polygons.
+  </p>
+    <div>
+      <h2>Table of Contents:</h2>
+      <ul style="list-style: none">
+        <li>
+          <a href="#intro">1. Introduction</a>
+        </li>
+        <li>
+          <a href="#offset">2. Drawing offset regions</a>
+        </li>
+        <li>
+          <a href="#complex">3. Complex offset regions</a>
+        </li>
+        <li>
+          <a href="#lowlevel">4. Low-level offset regions</a>
+        </li>
+        <li>
+          <a href="#applications">5. Applications</a>
+        </li>
+        <li>
+          <a href="#minkowski">6. Minkowski Sums</a>
+        </li>
+        <li>
+          <a href="#summary">7. Summary</a>
+        </li>
+        <li>
+          <a href="#requirements">8. Technical requirements</a>
+        </li>
+        <li>
+          <a href="#Resources">9. Resources</a>
+        </li>
+        <li>
+          <a href="#references">10. References</a>
+        </li>
+      </ul>
+    </div>
+    <h2>
+      <a name="intro">1. Introduction</a>
+    </h2>
+    <p>
+    The 'gridGeometry' package 
+    (<a href="#murrell-geometry-engine-2019"/>;
+     <a href="#murrell-coords-2022"/>)
+     provides a 'grid' interface to 
+    the <code>polyclip()</code> function from the 'polyclip' package 
+    (<a href="#pkg:polyclip"/>).
+    This means that we can generate and draw a complex shape in 'grid'
+    by combining simple 'grid' shapes.
+    For example, the following code 
+    defines a collection of simple circles:
+    a large circle and several smaller circles
+    that are arranged around the boundary of the large circle.
+  </p>
+    <rcode><![CDATA[
+library(grid)
+  ]]></rcode>
+    <rcode><![CDATA[
+t <- seq(0, 2*pi, length.out=13)[-1]
+x <- .5 + .3*cos(t)
+y <- .5 + .3*sin(t)
+  ]]></rcode>
+    <rcode><![CDATA[
+bigC <- circleGrob(r=.3, gp=gpar(fill=NA))
+littleC <- circleGrob(x, y, r=.05, gp=gpar(fill=NA))
+  ]]></rcode>
+    <rcode fig.width="2" fig.height="2"><![CDATA[
+grid.draw(bigC)
+grid.draw(littleC)
+  ]]></rcode>
+    <p>
+    The next code generates a more complex "gear" shape by 
+    subtracting the smaller circles from the large circle.
+  </p>
+    <rcode><![CDATA[
+library(gridGeometry)
+  ]]></rcode>
+    <rcode fig.width="2" fig.height="2"><![CDATA[
+grid.polyclip(bigC, littleC, "minus", 
+              gp=gpar(fill="grey"))
+  ]]></rcode>
+    <p>
+    This report describes an extension of the 'gridGeometry' package
+    to provide interfaces to two other functions from the 'polyclip'
+    package:  <code>polyoffset()</code> and <code>polylineoffset</code>.
+  </p>
+    <h2>
+      <a name="offset">2. Drawing offset regions</a>
+    </h2>
+    <p>
+    Two main functions have been added to 'gridGeometry'
+    for drawing offset regions: <code>grid.polyoffset()</code> and 
+    <code>grid.polylineoffset()</code>.
+  </p>
+    <p>
+    The <code>grid.polyoffset()</code> function takes a closed shape,
+    such as a rectangle or circle, and generates an offset region
+    based on a fixed offset given by
+    <code>delta</code>.  For example, the following code
+    defines a rectangle and then draws an offset region based on
+    that rectangle with an offset of 5mm.  The original rectangle
+    is shown as a dotted outline.
+  </p>
+    <rcode fig.width="2" fig.height="2"><![CDATA[
+r <- rectGrob(width=.5, height=.5, gp=gpar(lty="dotted", fill=NA))
+grid.polyoffset(r, unit(5, "mm"), gp=gpar(fill="grey"))
+grid.draw(r)
+  ]]></rcode>
+    <p>
+    The offset can also be negative, as shown in the following code.
+  </p>
+    <rcode fig.width="2" fig.height="2"><![CDATA[
+grid.polyoffset(r, unit(-5, "mm"), gp=gpar(fill="grey"))
+grid.draw(r)
+  ]]></rcode>
+    <p>
+    The <code>grid.polylineoffset</code> function takes an open
+    shape, such as a line or curve, and draws an offset region
+    based on a given <code>delta</code>.
+    For example, the following code draws an offset region
+    based on a series of straight line segments
+    (the original line segments are shown as a dotted line).
+  </p>
+    <rcode fig.width="2" fig.height="2"><![CDATA[
+l <- linesGrob(c(.25, .25, .75, .75), c(.25, .75, .75, .25),
+               gp=gpar(lty="dotted"))
+grid.polylineoffset(l, unit(5, "mm"), gp=gpar(fill="grey"))
+grid.draw(l)
+  ]]></rcode>
+    <p>
+    The new offset region functions in 'gridGeometry' can be combined
+    with the existing <code>grid.polyclip()</code> function
+    to produce an even wider variety of shapes.  For example, 
+    the following code generates a "square donut" by starting with
+    a rectangle, generating two offset regions (one with positive delta
+    and one with negative delta), and then subtracting the inner offset region
+    from the outer offset region.
+  </p>
+    <rcode fig.width="2" fig.height="2"><![CDATA[
+grid.newpage()
+outer <- polyoffsetGrob(r, unit(5, "mm"))
+inner <- polyoffsetGrob(r, unit(-5, "mm"))
+grid.polyclip(outer, inner, "minus", gp=gpar(fill="grey"))
+grid.draw(r)
+  ]]></rcode>
+    <h3>End types and join types</h3>
+    <p>
+    In all of the examples so far, the offset regions have been created
+    with rounded corners.  The <code>jointype</code> argument
+    can be used to select alternative corner styles:
+  </p>
+    <ul>
+      <li>
+        <p><code>"square"</code> produces bevelled corners.
+      </p>
+        <rcode fig.width="2" fig.height="2"><![CDATA[
+grid.polyoffset(r, unit(5, "mm"), jointype="square",
+                gp=gpar(fill="grey"))
+grid.draw(r)
+      ]]></rcode>
+      </li>
+      <li>
+        <p><code>"miter"</code> (or <code>"mitre"</code>) produces pointy corners.
+      </p>
+        <rcode fig.width="2" fig.height="2"><![CDATA[
+grid.polyoffset(r, unit(5, "mm"), jointype="miter",
+                gp=gpar(fill="grey"))
+grid.draw(r)
+      ]]></rcode>
+      </li>
+    </ul>
+    <p>
+    With <code>grid.polylineoffset()</code> we can control the shape
+    of corners with <code>jointype</code> as above <em>and</em> we can control
+    the shape of the offset region at the ends of the line or curve
+    with the <code>endtype</code> argument.  This defaults to 
+    <code>"openround"</code> (rounded ends).
+  </p>
+    <ul>
+      <li>
+        <p><code>"opensquare"</code> produces square ends (at an offset from the
+        end of the line).
+      </p>
+        <rcode fig.width="2" fig.height="2"><![CDATA[
+grid.polylineoffset(l, unit(5, "mm"), endtype="opensquare",
+                    gp=gpar(fill="grey"))
+grid.draw(l)
+      ]]></rcode>
+      </li>
+      <li>
+        <p><code>"openbutt"</code> produces square ends (at the end of the line).
+      </p>
+        <rcode fig.width="2" fig.height="2"><![CDATA[
+grid.polylineoffset(l, unit(5, "mm"), endtype="openbutt",
+                    gp=gpar(fill="grey"))
+grid.draw(l)
+      ]]></rcode>
+      </li>
+    </ul>
+    <p>
+    There are also two unusual end types that join
+    the end of the line to the start of the line,
+    in which case there are no longer ends to worry about and only
+    the join type matters.
+  </p>
+    <ul>
+      <li>
+        <p><code>"closedpolygon"</code> converts the line to a polygon
+        and calculates an offset of the polygon.
+      </p>
+        <rcode fig.width="2" fig.height="2"><![CDATA[
+grid.polylineoffset(l, unit(5, "mm"), endtype="closedpolygon",
+                    gp=gpar(fill="grey"))
+grid.draw(l)
+      ]]></rcode>
+      </li>
+      <li>
+        <p><code>"closedline"</code> converts the line to a closed line
+        and calculates an offset of the line.
+      </p>
+        <rcode fig.width="2" fig.height="2"><![CDATA[
+grid.polylineoffset(l, unit(5, "mm"), endtype="closedline",
+                    gp=gpar(fill="grey"))
+grid.draw(l)
+      ]]></rcode>
+      </li>
+    </ul>
+    <h2>
+      <a name="complex">3. Complex offset regions</a>
+    </h2>
+    <p>
+    This section looks at some more complicated scenarios for
+    calculating offset regions and some lower-level functions
+    that have been added to 'gridGeometry'.
+  </p>
+    <h3>Offset regions for multiple shapes</h3>
+    <p>
+    The examples from the previous section have only considered 
+    the situation where we are generating an offset region based
+    on a single shape.  In this section we consider what happens
+    when we have more than shape, for example, in the following code
+    we create a 'grid' grob that draws two (overlapping) circles.
+  </p>
+    <rcode fig.width="3" fig.height="2"><![CDATA[
+circles <- circleGrob(1:2/3, r=.3, gp=gpar(fill=NA))
+grid.draw(circles)
+  ]]></rcode>
+    <p>
+    The first important point is that 'gridGeometry' will "reduce"
+    a grob that draws multiple shapes before sending it to
+    'polyclip'.  This happens automatically, but the following
+    code explicitly performs the reduce to show what happens
+    by default.  In this case, we get a single shape that is the
+    union of the two circles (drawn as a dotted outline so that
+    we can add it to the offset region examples below).
+  </p>
+    <rcode fig.width="3" fig.height="2"><![CDATA[
+circleUnion <- reduceGrob(circles, gp=gpar(lty="dotted", fill=NA))
+grid.draw(circleUnion)
+  ]]></rcode>
+    <p>
+    When we calculate an offset region for the two circles
+    we get a single region (shown in grey below).  This makes sense because
+    we are actually calculating an offset of the union of 
+    the two circles (shown as a dotted outline).
+  </p>
+    <rcode fig.width="3" fig.height="2"><![CDATA[
+grid.polyoffset(circles, unit(5, "mm"), gp=gpar(fill="grey"))
+grid.draw(circleUnion)
+  ]]></rcode>
+    <p>
+    If we use a negative offset, we still get a single region, again
+    because we are offsetting the union of the circles.
+  </p>
+    <rcode fig.width="3" fig.height="2"><![CDATA[
+grid.polyoffset(circles, unit(-5, "mm"), gp=gpar(fill="grey"))
+grid.draw(circleUnion)
+  ]]></rcode>
+    <p>
+    However, if we increase the (negative) offset, it is possible to
+    end up with
+    two regions as the result, even though we are offsetting a single region.
+  </p>
+    <rcode fig.width="3" fig.height="2"><![CDATA[
+grid.polyoffset(circles, unit(-10, "mm"), gp=gpar(fill="grey"))
+grid.draw(circleUnion)
+  ]]></rcode>
+    <p>
+    We can also control how the circles are reduced.
+    For example, the following code explicitly reduces the circles
+    using a "flatten" operator, which keeps the circles as two
+    separate circles.
+  </p>
+    <rcode fig.width="3" fig.height="2"><![CDATA[
+circleFlatten <- reduceGrob(circles, op="flatten", 
+                            gp=gpar(lty="dotted", fill=NA))
+grid.draw(circleFlatten)
+  ]]></rcode>
+    <p>
+    When we specify an explicit <code>reduce="flatten"</code> to 
+    <code>grid.polyoffset()</code>, we can end up sending
+    multiple shapes to 'polyclip'.
+  </p>
+    <p>
+    The following code generates an offset region based on two separate
+    circles.  The result is a single region, just 
+    the same as when we offset the union of the
+    circles, because the offset regions of the two circles overlap.
+  </p>
+    <rcode fig.width="3" fig.height="2"><![CDATA[
+grid.polyoffset(circles, unit(5, "mm"), reduce="flatten", gp=gpar(fill="grey"))
+grid.draw(circleFlatten)
+  ]]></rcode>
+    <p>
+    However, if we use a negative offset, the result is two separate regions
+    (because the offset regions of the two circles do not overlap).
+  </p>
+    <rcode fig.width="3" fig.height="2"><![CDATA[
+grid.polyoffset(circles, unit(-5, "mm"), reduce="flatten", gp=gpar(fill="grey"))
+grid.draw(circleFlatten)
+  ]]></rcode>
+    <p>
+    In summary, it is possible to start with either a single shape or 
+    multiple shapes and end up with either a single shape or multiple
+    shapes, depending on how (or whether) we reduce the input shapes
+    and on whether the resulting offset regions (if there are more
+    than one) overlap each other.
+  </p>
+    <h2>
+      <a name="lowlevel">4. Low-level offset regions</a>
+    </h2>
+    <p>
+    In the previous sections, we have demonstrated functions
+    that allow us to provide 'grid' grobs as input and obtain 
+    grobs as output.  The 'gridGeometry' package also provides
+    a lower-level interface that just works with coordinates 
+    rather than grobs.
+  </p>
+    <p>
+    As an example of working at a lower level, 
+    consider the simple circle shape shown below.
+  </p>
+    <rcode fig.width="2" fig.height="2"><![CDATA[
+c <- circleGrob(r=.3)
+grid.draw(c)
+  ]]></rcode>
+    <p>
+    Suppose we want to create a "donut" shape based on this circle.
+    We need an offset larger than the circle and an offset smaller
+    than the circle, but because the circle is a closed shape, 
+    we can only use 
+    <code>grid.polyoffset()</code> to produce either a larger circle
+    or a smaller circle.
+  </p>
+    <p>
+    The following code uses the lower-level <code>xyListFromGrob()</code>
+    function to generate an xy-list (a list of sets of x/y coordinates)
+    from the circle grob.  
+  </p>
+    <rcode fig.width="2" fig.height="2" fid.keep="none"><![CDATA[
+pts <- xyListFromGrob(c)
+pts    
+  ]]></rcode>
+    <p>
+    The result is a set of points around a circle.
+  </p>
+    <rcode fig.width="2" fig.height="2"><![CDATA[
+grid.points(pts[[1]]$x, pts[[1]]$y, default.units="in", pch=".")
+  ]]></rcode>
+    <p>
+    Now that we are dealing with a lower-level set of coordinates, rather than
+    higher-level grob, we can treat these coordinates as an open shape
+    rather than a closed shape.  For example, the following code
+    uses the <code>xyListToLine()</code> function to generate a series of line 
+    segments that go most of the way, but not all of the way, around the circle
+    (there is a small gap on the right of the circle).
+  </p>
+    <rcode fig.width="2" fig.height="2"><![CDATA[
+grid.draw(xyListToLine(pts))
+  ]]></rcode>
+    <p>
+    The next code also treats the coordinates as an open shape,
+    but it calls the <code>polylineoffset()</code> function 
+    to generate a set of offset coordinates.  This creates an offset 
+    on both sides of the line and, because we specify 
+    <code>endtype="closedline"</code>, does so all of the way around 
+    the circle.
+    The result is still just coordinates, but it is now a list of 2 sets
+    of x/y coordinates (the outer edge of the donut and the inner edge
+    of the donut).
+  </p>
+    <rcode><![CDATA[
+offsetpts <- polylineoffset(pts, delta=unit(2, "mm"), endtype="closedline")
+offsetpts
+  ]]></rcode>
+    <p>
+    As a final step,
+    we can use <code>xyListToPath()</code> to convert the coordinates
+    back to a grob for drawing.
+  </p>
+    <rcode fig.width="2" fig.height="2"><![CDATA[
+donut <- xyListToPath(offsetpts, gp=gpar(fill="grey"))
+grid.draw(donut)
+  ]]></rcode>
+    <h2>
+      <a name="applications">5. Applications</a>
+    </h2>
+    <p>
+    As with the original <code>grid.polyclip()</code> function,
+    the new functions in 'gridGeometry' have value as an additional
+    tool for creating shapes in R graphics.  This is potentially useful
+    because new (graphical) tools help us to
+    think about (graphical) problems in new ways and allow us to
+    come up with new (graphical) solutions.
+  </p>
+    <p>
+    As a simple example, consider the more complicated "gear" shape
+    shown below.  We saw in the introduction how easy it is to
+    create the "teeth" around the outside of the gear shape, but 
+    how can we create the wedge-shaped holes in the interior
+    of the gear shape, particularly with rounded corners on each wedge?
+  </p>
+    <p>
+      <img src="figure/fullcog-1.png" alt="a more complex gear shape"/>
+    </p>
+    <p>
+    With the concept of offset regions (with rounded corners) in our
+    toolbox, it is easier to think of ways to generate this shape.
+    To start with, we will use <code>grid.polyclip()</code> to 
+    subtract horizontal and vertical bars from a medium-sized circle.
+    The following code shows the circles and bars that we are working with.
+  </p>
+    <rcode id="paths" fig.width="2" fig.height="2"><![CDATA[
+medC <- circleGrob(r=.2, gp=gpar(fill=NA))
+hbar <- rectGrob(height=.1, gp=gpar(fill=NA))
+vbar <- rectGrob(width=.1, gp=gpar(fill=NA))
+grid.draw(medC)
+grid.draw(hbar)
+grid.draw(vbar)
+  ]]></rcode>
+    <p>
+    The following code subtracts the bars from the medium-sized
+    circle, which leaves
+    four wedges.
+  </p>
+    <rcode id="wedges" fig.width="2" fig.height="2"><![CDATA[
+wedges <- polyclipGrob(medC, gList(hbar, vbar), "minus",
+                         gp=gpar(fill="grey"))
+grid.draw(wedges)
+  ]]></rcode>
+    <p>
+    The next code generates offset regions based on the four wedges.
+    This produces the curved corners on the wedges.
+  </p>
+    <rcode ide="roundWedges" fig.width="2" fig.height="2"><![CDATA[
+roundedWedges <- polyoffsetGrob(wedges, unit(1, "mm"),
+                                gp=gpar(fill="grey"))
+grid.draw(roundedWedges)
+  ]]></rcode>
+    <p>
+    The final step is to subtract those wedges from the large circle
+    that we started with in the introduction
+    (as well as subtracting the small circles to make the teeth).
+  </p>
+    <rcode id="fullcog" fig.width="2" fig.height="2"><![CDATA[
+grid.polyclip(bigC, gList(littleC, roundedWedges), "minus",
+              gp=gpar(fill="grey"))
+  ]]></rcode>
+    <p>
+    The first author has also made use of the new offset facilities
+    in 'gridGeometry' to create shapes for an acoustic similation app
+    called AiHear (<a href="#AiHear"/>).  For example, the offset facilities
+    made it easy to create an "H"
+    shape, with rounded ends on the verticals, as shown below.
+  </p>
+    <p>
+    The relatively complex final outline is not described directly.
+    Instead, a simple series of straight lines is described
+    (shown in grey below)
+    and then the final result is obtained from the union
+    of the offset regions based on the straight lines.
+  </p>
+    <rcode id="H" fig.width="2" fig.height="2"><![CDATA[
+l1 <- linesGrob(x=rep(0.3, 2), y=c(0.25, 0.75), gp=gpar(col="grey"))
+l2 <- linesGrob(x=rep(0.7, 2), y=c(0.25, 0.75), gp=gpar(col="grey"))
+l3 <- linesGrob(x=c(0.3, 0.7), y=rep(0.5, 2), gp=gpar(col="grey"))
+l <- gList(l1, l2, l3)
+grid.draw(l)
+grid.polylineoffset(l, 0.05, endtype = "openround", jointype = "round",
+                    gp=gpar(fill=NA))    
+  ]]></rcode>
+    <p>
+    This is a nice example of a simple solution to a problem 
+    only becoming apparent
+    once the idea of offset regions has been introduced.
+    The image below shows the "H" that was created in R being
+    used in the AiHear app.
+  </p>
+    <p>
+      <img src="AiHear.png" width="200"/>
+    </p>
+    <p>
+    An example of a 
+    <em>statistical</em> graphics application
+    is the creation of non-standard data symbols.
+    For example, the code below draws "donut" data symbols
+    in a 'ggplot2' plot (<a href="#ggplot2"/>;  the 'gggrid' package is 
+    used to combine low-level 'grid' drawing with the 'ggplot2' plot;  
+    <a href="#pkg:gggrid"/>).
+    This code builds a "donutGrob" object for each data point
+    and defines a <code>makeContent()</code> method for "donutGrob"s 
+    so that the calculation of offset regions happens when the 
+    data points are drawn (rather than when they are created).
+  </p>
+    <rcode><![CDATA[
+donutGrob <- function(x, y) {
+    gTree(x=x, y=y, cl="donutGrob")
+}
+makeContent.donutGrob <- function(x) {
+    circles <- mapply(circleGrob, x$x, x$y, MoreArgs=list(r = unit(1.5, "mm")),
+                      SIMPLIFY=FALSE)
+    pts <- lapply(circles, xyListFromGrob)
+    offsetpts <- lapply(pts, polylineoffset, delta=unit(.5, "mm"), 
+                        endtype="closedline")
+    donuts <- lapply(offsetpts, xyListToPath, gp=gpar(fill="white"))
+    setChildren(x, do.call(gList, donuts))
+}
+donut <- function(data, coords) {
+    donutGrob(coords$x, coords$y)
+}
+  ]]></rcode>
+    <rcode message="FALSE"><![CDATA[
+library(gggrid)
+  ]]></rcode>
+    <rcode fig.width="4" fig.height="4"><![CDATA[
+ggplot(mtcars) + 
+    grid_panel(donut, aes(x=disp, y=mpg, colour=as.factor(am), fill=hp))
+  ]]></rcode>
+    <p>
+    The difference between drawing donut symbols and just open circles using
+    a thick line width is that the donuts have a separate 
+    (interior and exterior) border and fill.  This is emphasised 
+    in the following variation where the donut borders are coloured
+    to represent whether cars are manual (blueish) or automatic (reddish)
+    and the donut
+    fills represent the horsepower (dark to light).  
+    The manual car with the highest
+    horsepower is clearly visible.
+  </p>
+    <rcode><![CDATA[
+donutGrob <- function(x, y, colour, fill) {
+    gTree(x=x, y=y, colour=colour, fill=fill, cl="donutGrob")
+}
+cook <- function(offsetpts, colour, fill) {
+    xyListToPath(offsetpts, gp=gpar(col=colour, fill=fill, lwd=2))
+}
+makeContent.donutGrob <- function(x) {
+    circles <- mapply(circleGrob, x$x, x$y, MoreArgs=list(r = unit(1.5, "mm")),
+                      SIMPLIFY=FALSE)
+    pts <- lapply(circles, xyListFromGrob)
+    offsetpts <- lapply(pts, polylineoffset, delta=unit(.5, "mm"), 
+                        endtype="closedline")
+    donuts <- mapply(cook, offsetpts, x$colour, x$fill, SIMPLIFY=FALSE)
+    setChildren(x, do.call(gList, donuts))
+}
+donut <- function(data, coords) {
+    donutGrob(coords$x, coords$y, coords$colour, coords$fill)
+}
+  ]]></rcode>
+    <rcode fig.width="4" fig.height="4"><![CDATA[
+ggplot(mtcars) + 
+    grid_panel(donut, aes(x=disp, y=mpg, colour=as.factor(am), fill=hp))
+  ]]></rcode>
+    <h2>
+      <a name="minkowski">6. Minkowski Sums</a>
+    </h2>
+    <p>
+    In addition to the functions for generating offset regions,
+    there is also new support for generating 
+    <a href="https://en.wikipedia.org/wiki/Minkowski_addition">Minkowski Sums</a>.
+    The main function is <code>grid.minkowski()</code>, which takes
+    two shapes, a "pattern" and a "path", and generates a new shape
+    by "adding" the pattern to the path.
+  </p>
+    <p>
+    For certain cases, a Minkowski Sum generates a result just like an
+    offset region.  For example, the following code adds a circle
+    pattern to a triangular path.  This is done by adding the circle to
+    every location on the triangle.  The result (black outline with grey
+    fill) is like an offset region
+    for the triangle (the original triangle is shown in red and 
+    examples of the circle being added to the vertices of the triangle
+    are shown in green).
+  </p>
+    <rcode id="mink1" eval="FALSE"><![CDATA[
+circle <- circleGrob(0, 0, r=.1, gp=gpar(col="green", fill=NA))
+triangle <- polygonGrob(c(.3, .5, .7), c(.3, .7, .3), 
+                        gp=gpar(col="red", fill=NA))
+grid.minkowski(circle, triangle, gp=gpar(lwd=3, fill="grey"))
+  ]]></rcode>
+    <rcode echo="FALSE" fig.width="2" fig.height="2"><![CDATA[
+<<mink1>>
+grid.draw(triangle)
+grid.draw(editGrob(circle, x=unit(.3, "npc"), y=unit(.3, "npc")))
+grid.draw(editGrob(circle, x=unit(.5, "npc"), y=unit(.7, "npc")))
+grid.draw(editGrob(circle, x=unit(.7, "npc"), y=unit(.3, "npc")))
+  ]]></rcode>
+    <p>
+    However, the pattern can be any shape, so the final result
+    is more general than the offset regions described previously.
+    For example, the following code adds a rectangle pattern
+    to the triangle.
+  </p>
+    <rcode id="mink2" eval="FALSE"><![CDATA[
+rect <- rectGrob(0, 0, width=.2, height=.2, gp=gpar(col="green", fill=NA))
+grid.minkowski(rect, triangle, gp=gpar(lwd=3, fill="grey"))
+  ]]></rcode>
+    <rcode echo="FALSE" fig.width="2" fig.height="2"><![CDATA[
+<<mink2>>
+grid.draw(triangle)
+grid.draw(editGrob(rect, x=unit(.3, "npc"), y=unit(.3, "npc")))
+grid.draw(editGrob(rect, x=unit(.5, "npc"), y=unit(.7, "npc")))
+grid.draw(editGrob(rect, x=unit(.7, "npc"), y=unit(.3, "npc")))
+  ]]></rcode>
+    <!--
+  <p>
+    Watch out for brushes that create holes !
+
+    Possibly a limitation of Clipper itself.  See ...
+
+    https://sourceforge.net/p/polyclipping/discussion/1148419/thread/8488d4e8/
+  </p>
+
+  <rcode fig.width="2" fig.height="2"><![CDATA[
+bigRect <- rectGrob(0, 0, width=.5, height=.5, gp=gpar(col="green", fill=NA))
+grid.newpage()
+grid.minkowski(bigRect, triangle, gp=gpar(lwd=3))
+grid.draw(triangle)
+grid.draw(editGrob(bigRect, x=unit(.3, "npc"), y=unit(.3, "npc")))
+grid.draw(editGrob(bigRect, x=unit(.5, "npc"), y=unit(.7, "npc")))
+grid.draw(editGrob(bigRect, x=unit(.7, "npc"), y=unit(.3, "npc")))
+  ]]></rcode>
+-->
+    <!--
+  <p>
+    Concave shapes ?
+  </p>
+
+  <rcode fig.width="2" fig.height="2"><![CDATA[
+concave <- polygonGrob(c(.3, .5, .7, .5), c(.3, .7, .3, .5), 
+                       gp=gpar(col="red", fill=NA))
+grid.newpage()
+grid.minkowski(rect, concave, gp=gpar(lwd=3, fill="grey"))
+grid.draw(concave)
+grid.draw(editGrob(rect, x=unit(.3, "npc"), y=unit(.3, "npc")))
+grid.draw(editGrob(rect, x=unit(.5, "npc"), y=unit(.7, "npc")))
+grid.draw(editGrob(rect, x=unit(.7, "npc"), y=unit(.3, "npc")))
+grid.draw(editGrob(rect, x=unit(.5, "npc"), y=unit(.5, "npc")))
+  ]]></rcode>
+-->
+    <p>
+    The examples so far have used a pattern that is centred on (0, 0),
+    so the result is just an expanded version of the original path.
+    However, the pattern can also induce a translation of the path.
+    As an extreme example, the following code adds a tiny circle to
+    the triangle.  The circle has almost zero width so it does not
+    expand the triangle, but the circle is at (0, .2) so the result
+    is translated vertically.
+  </p>
+    <rcode id="mink3" eval="FALSE"><![CDATA[
+pt <- circleGrob(0, .2, r=0.001, gp=gpar(col="green"))
+grid.minkowski(pt, triangle, gp=gpar(lwd=3, fill="grey"))
+  ]]></rcode>
+    <rcode echo="FALSE" fig.width="2" fig.height="2"><![CDATA[
+<<mink3>>
+grid.draw(triangle)
+grid.draw(editGrob(pt, x=unit(.3, "npc"), y=unit(.5, "npc")))
+grid.draw(editGrob(pt, x=unit(.5, "npc"), y=unit(.9, "npc")))
+grid.draw(editGrob(pt, x=unit(.7, "npc"), y=unit(.5, "npc")))
+  ]]></rcode>
+    <p>
+    In full generality, the Minkowski Sum produces the sum of all vectors
+    within the pattern and the path.  This is shown in the following 
+    diagram:  the drawing region is represented by a grey rectangle,
+    with its origin at the bottom-left corner of the grey rectangle;
+    the pattern, a rectangle, is drawn in blue to show that it is
+    offset from the origin;  the path, a triangle, is drawn in red;
+    and examples of the pattern being added to the path (at the 
+    triangle vertices) are drawn in green.
+  </p>
+    <rcode id="mink4" eval="FALSE"><![CDATA[
+smallRect <- rectGrob(0, .2, width=.2, height=.2, gp=gpar(col="green", fill=NA))
+grid.minkowski(smallRect, triangle, gp=gpar(lwd=3, fill="grey"))
+  ]]></rcode>
+    <rcode echo="FALSE" fig.width="2" fig.height="2"><![CDATA[
+pushViewport(viewport(width=.8, height=.8))
+grid.rect(gp=gpar(col="grey"))
+<<mink4>>
+grid.draw(editGrob(smallRect, gp=gpar(col="blue")))
+grid.draw(triangle)
+grid.draw(editGrob(smallRect, x=unit(.3, "npc"), y=unit(.5, "npc")))
+grid.draw(editGrob(smallRect, x=unit(.5, "npc"), y=unit(.9, "npc")))
+grid.draw(editGrob(smallRect, x=unit(.7, "npc"), y=unit(.5, "npc")))
+  ]]></rcode>
+    <p>
+    The path can also be an open shape.  For example, 
+    the following code adds a rectangle pattern to a line. 
+  </p>
+    <rcode id="mink5" eval="FALSE"><![CDATA[
+line <- linesGrob(c(.3, .5, .7), c(.3, .7, .3), 
+                  gp=gpar(col="red"))
+grid.minkowski(rect, line, gp=gpar(lwd=3, fill="grey"))
+  ]]></rcode>
+    <rcode echo="FALSE" fig.width="2" fig.height="2"><![CDATA[
+<<mink5>>
+grid.draw(line)
+grid.draw(editGrob(rect, x=unit(.3, "npc"), y=unit(.3, "npc")))
+grid.draw(editGrob(rect, x=unit(.5, "npc"), y=unit(.7, "npc")))
+grid.draw(editGrob(rect, x=unit(.7, "npc"), y=unit(.3, "npc")))
+  ]]></rcode>
+    <p>
+    This usage allows us to create shapes by stroking a path
+    with a pen, in the spirit of METAFONT (<a href="#metafont"/>) 
+    or METAPOST (<a href="#metapost-hobby"/>).
+    For example, the following code creates an ellipsoid pen (pattern)
+    and strokes the line with that pen (adds the pattern to the path).
+  </p>
+    <rcode id="mink6" eval="FALSE"><![CDATA[
+pen <- xsplineGrob(c(-.1, 0, .1, 0), c(-.1, .1, .1, -.1), 
+                   open=FALSE, shape=1,
+                   gp=gpar(col="green", fill=NA))
+grid.minkowski(pen, line, gp=gpar(lwd=3, fill="grey"))
+  ]]></rcode>
+    <rcode echo="FALSE" fig.width="2" fig.height="2"><![CDATA[
+<<mink6>>
+grid.draw(line)
+pushViewport(viewport(x=unit(.3, "npc"), y=unit(.3, "npc"), 
+                      just=c("left", "bottom")))
+grid.draw(pen)
+popViewport()
+pushViewport(viewport(x=unit(.5, "npc"), y=unit(.7, "npc"),
+                      just=c("left", "bottom")))
+grid.draw(pen)
+popViewport()
+pushViewport(viewport(x=unit(.7, "npc"), y=unit(.3, "npc"),
+                      just=c("left", "bottom")))
+grid.draw(pen)
+popViewport()
+  ]]></rcode>
+    <h2>
+      <a name="summary">7. Summary</a>
+    </h2>
+    <p>
+    New functions in the 'gridGeometry' package provide access
+    to the facilities in the 'polyclip' package for generating
+    offset regions.  The main interface
+    is provided by <code>grid.polyoffset()</code> for closed
+    shapes and <code>grid.polylineoffset()</code> for open shapes.
+    There is also a new interface for generating Minkowski Sums
+    via the <code>grid.minkowski()</code> function.
+  </p>
+    <h2>
+      <a name="requirements">8. Technical requirements</a>
+    </h2>
+    <p>
+    The examples and discussion in this report relate to 
+    <a href="https://github.com/pmur002/gridgeometry/releases/tag/v0.4-0">version 0.4-0</a>
+    of the 'gridGeometry' package.
+  </p>
+    <p>
+    This report was generated within a Docker container
+    (see <a href="#Resources">Resources</a> section below).
+  </p>
+    <h2>
+      <a name="Resources">9. Resources</a>
+    </h2>
+    <ul>
+      <li>
+      The <a href="offset.cml">raw source file</a> for this
+      report, a <a href="offset.xml">valid XML</a>
+      transformation of the source file, a <a href="offset.Rhtml">'knitr' document</a> generated from
+      the XML file, 
+      two <a href="toc.R">R</a> <a href="bib.R">files</a> and
+      the <a href="offset.bib">bibtex file</a>
+      that are used to generate the table of contents and reference sections,
+      two <a href="common.xsl">XSL</a> <a href="knitr.xsl">files</a> and an 
+      <a href="knit.R">R file</a> that are used to transform the XML to
+      the 'knitr' document, and a <a href="Makefile">Makefile</a> that
+      contains code for the other transformations and coordinates
+      everything.  
+      These materials are also available
+      on <a href="https://github.com/pmur002/offset-report/releases/tag/v1">github</a>.
+    </li>
+      <li>
+      This report was generated within a 
+      <a href="https://www.docker.com/">Docker</a> container.
+      The Docker command to build the report is included in the Makefile above.
+      The Docker image for the container is available from
+      <a href="https://hub.docker.com/r/pmur002/offset-report/">Docker Hub</a>;
+      alternatively, the image can be rebuilt from its 
+      <a href="Dockerfile">Dockerfile</a>.
+    </li>
+    </ul>
+    <h2>How to cite this report</h2>
+    <p>
+    Wong, J., and Murrell, P. (2022). "Offsetting Lines and Polygons in 'grid'" 
+    Technical Report 2022-??, Department of Statistics, The University of Auckland. 
+    Version 1.
+    [ <a href="how-to-cite.bib">bib</a> |
+      <a href="http://dx.doi.org/">DOI</a> | 
+      <a href="https://stattech.blogs.auckland.ac.nz/">http</a> ]
+  </p>
+    <h2>
+      <a name="references">10. References</a>
+    </h2>
+    <ul style="list-style-type: none">
+      <li>
+        <a name="R"/>
+      </li>
+      <li>
+        <a name="pkg:polyclip"/>
+      </li>
+      <li>
+        <a name="AiHear"/>
+      </li>
+      <li>
+        <a name="murrell-geometry-engine-2019"/>
+      </li>
+      <li>
+        <a name="murrell-coords-2022"/>
+      </li>
+      <li>
+        <a name="ggplot2"/>
+      </li>
+      <li>
+        <a name="pkg:gggrid"/>
+      </li>
+      <li>
+        <a name="metafont"/>
+      </li>
+      <li>
+        <a name="metapost-hobby"/>
+      </li>
+    </ul>
+    <hr/>
+    <p><a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img class="CC" alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png"/></a><br/><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">This document</span>
+    by <span xmlns:cc="http://creativecommons.org/ns#" property="cc:attributionName">Paul
+    Murrell</span> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative
+    Commons Attribution 4.0 International License</a>.
+  </p>
+  </body>
+</html>
